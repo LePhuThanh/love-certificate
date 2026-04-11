@@ -1,0 +1,399 @@
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+🔥 A. GENERATE FLOW (User tạo certificate)
+    [1] INIT
+    User nhập thông tin
+    => tạo CertificateSession (status = DRAFT)
+
+    [2] PREVIEW
+    User xem trước certificate (PDF temp)
+    => no hash
+    => no signature
+    => no lưu file
+
+    [3] WRITE / UPDATE STORY (optional)
+    User nhập love story
+    => lưu theo sessionId
+    => có version history
+
+    [4] SEND OTP
+    => xác nhận user muốn generate
+
+    [5] VERIFY OTP
+    => hợp lệ => trigger async
+
+    [6] GENERATE (ASYNC)
+    System tạo certificate chính thức:
+    => render PDF (KHÔNG chứa story)
+    => generate QR (/public/cert/{certId})
+    => hash (SHA-256)
+    => RSA signature
+    => lưu file + hash + signature
+    => status = COMPLETED
+
+
+
+🔥 B. STATUS FLOW (polling + async)
+    User gọi API getCertificateStatus lấy status => (/v1/status/{sessionId})
+    => biết đang PROCESSING / COMPLETED
+    => nếu COMPLETED => lấy fileUrl
+    User download certificate  => /v1/certificates/{cerId}/download
+
+Có nghĩa :
+    User nhập OTP
+            ↓
+    bấm Verify
+            ↓
+    UI hiển thị:
+    "Đang tạo chứng nhận..."
+    (spinner/loading)
+            ↓
+    FE gọi API polling mỗi 1-2s:
+    (Sau này thay polling bằng: WebSocket)
+
+    GET /certificates/by-session/{sessionId}
+            ↓
+    khi status = COMPLETED
+            ↓
+    hiển thị certificate 🎉
+
+🔥 C. SHARE FLOW
+User share PDF
+    => người khác scan QR
+    => mở public page (/public/cert/{certId})
+
+🔥 D. PUBLIC VERIFY FLOW (core product)
+GET /public/cert/{certId} => page load => auto verify RSA ...=> hiển thị kết quả
+
+System xử lý:
+    [1] VERIFY (AUTO)
+    => đọc file
+    => verify RSA
+    => xác định VALID / TAMPERED
+
+    [2] LOAD STORY
+    => certId => sessionId => story
+
+    [3] LOAD TRUST SCORE
+    => validRatio
+    => uniqueUsers
+    => fraud detection
+
+    [4] LOAD TIMELINE
+    => milestone (system)
+    => story history
+
+    [5] RETURN RESPONSE
+
+🔥 E. ADVANCED VERIFY (manual/debug/admin)
+    User/Admin có thể:
+
+    => verify HASH
+    => verify RSA riêng
+    => xem verify history
+    => xem verify summary
+
+🔥 F. ADMIN FLOW
+    => revoke certificate
+    => xem verify history
+    => audit trust
+
+🔥 D. PUBLIC PAGE (UI)
+    ✔ Certificate Status (VALID / TAMPERED)
+    ✔ Love Story (current)
+    ✔ Story History
+    ✔ Trust Score
+    ✔ Timeline (milestones)
+
+🔥 E EXPERIENCE LAYER (Detail below)
+Hệ thống tự động:
+    + ghi nhận các cột mốc tình yêu (milestones)
+    + gửi thông báo (email) đến người dùng
+    + đảm bảo không gửi trùng
+    + đảm bảo retry khi lỗi
+    + đảm bảo không mất job khi system crash
+
+MilestoneScheduler
+    ↓
+MilestoneService
+    ↓
+EmailService (@Async)
+    ↓
+[SMTP]
+    ↓
+SUCCESS => DONE
+
+FAIL => EmailJob (FAILED)
+            ↓
+───────────────
+EmailRetryScheduler
+            ↓
+claim => PROCESSING
+            ↓
+send email
+    ↓
+SUCCESS => SENT
+FAIL => FAILED / DEAD
+
+🔥 Nếu system crash:
+=> job stuck = PROCESSING
+
+───────────────
+EmailRecoverScheduler
+            ↓
+detect stuck job
+            ↓
+reset => FAILED
+            ↓
+retry lại
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+Cmt by Phelim (10/04/2026)
+Flow hoạt động của CACHE (filter)
+
+1. MISS Cache:
+    Request
+      → Spring Cache Proxy intercept
+          → cache NOT FOUND (MISS)
+          → gọi method thật
+              → AOP (CacheHeaderAspect) chạy:
+                    set:
+                      X_CACHE = MISS
+                      X_CACHE_NAME = publicCert   (lấy từ @Cacheable)
+                      X_CACHE_KEY = cert:CERT_123 (evaluate từ SpEL key)
+              → method business chạy (DB, RSA, ...)
+              → kết quả được lưu vào cache
+      → Filter (CacheHeaderFilter) chạy cuối:
+            đọc attribute từ request
+            set header vào response
+
+    Response:
+      X-Cache: MISS
+      X-Cache-Name: publicCert
+      X-Cache-Key: cert:CERT_123
+
+2. HIT Cache:
+    Request
+      → Spring Cache Proxy intercept
+          → cache FOUND (HIT)
+          → return data ngay (KHÔNG gọi method)
+          → AOP KHÔNG chạy
+          → không có attribute nào được set
+
+      → Filter (CacheHeaderFilter):
+            không thấy X_CACHE → default = HIT
+            không có cacheName / key
+
+    Response:
+      X-Cache: HIT
+
+Insight: MISS → đi qua method → AOP có dữ liệu → đầy đủ header
+         HIT  → không đi qua method → AOP không chạy → chỉ biết HIT
+
+Pipeline: Client
+            ↓
+          Filter (MdcFilter)
+            ↓
+          Spring Cache (Proxy)
+            ↓
+          AOP (chỉ khi MISS)
+            ↓
+          Service Method
+            ↓
+          Filter (CacheHeaderFilter)
+            ↓
+          Response
+----------------------------------
+NOTE: how to Async getCertificateStatus work
+
+Client gọi /verify-otp
+        ↓
+Controller
+        ↓
+Service.verifyOtp()
+    1. check OTP
+    2. update status VERIFIED
+    3. gọi generateAsync()
+        ⚡ TẠI ĐÂY:
+        không chờ generateAsync chạy xong
+        ↓
+    return response ngay
+        ↓
+Client nhận response SUCCESS
+----------------------------------
+Thread khác:
+    generateAsync()
+    1. set PROCESSING
+    2. render PDF
+    3. hash
+    4. sign
+    5. save DB
+    6. set COMPLETED
+
+----------------------------------DETAIL - E EXPERIENCE LAYER
+1. TRIGGER LAYER — MilestoneScheduler
+    + Bản chất: System-driven (không cần user action)
+    + Cơ chế hoạt động: @Scheduled (cron hoặc fixedRate) => tự động chạy theo thời gian
+    + Flow: MilestoneScheduler => gọi MilestoneService.processRelationshipMilestones()
+    + Vai trò:✔ Trigger business event (milestone reached)
+            ✔ Không xử lý retry
+            ✔ Không giữ state
+
+2. BUSINESS LAYER — MilestoneService
+    + Bản chất: Core business logic của Experience Layer
+    + Flow: [1] Load tất cả CertificateSession có status = COMPLETED
+
+                     [2] Tính:
+                         daysSinceRelationshipStart = today - loveStartDate
+
+                     [3] So sánh với milestone config (0, 30, 100, 365...)
+
+                     [4] Lọc ra candidate sessions (chỉ những session hit milestone hôm nay)
+
+                     [5] Query batch MilestoneLog:
+                         => tránh N+1
+                         => kiểm tra đã gửi chưa (idempotency)
+
+                     [6] Nếu chưa gửi:
+                         => trigger EmailService (@Async)
+
+                     [7] Ghi log:
+                         => lưu MilestoneLog (đảm bảo không gửi lại)
+    + Vai trò: ✔ Xác định event "milestone reached"
+               ✔ Đảm bảo idempotency (MilestoneLog)
+               ✔ Trigger notification (email)
+
+3. ASYNC LAYER — EmailService
+    + Bản chất: Non-blocking execution (tách khỏi scheduler thread)
+    + Flow: MilestoneService
+            => EmailService.sendMilestoneEmail() (@Async)
+
+                TRY:
+                    gửi email qua SMTP
+                    => SUCCESS => DONE
+
+                CATCH:
+                    => lưu EmailJob vào DB (status = FAILED)
+    + Vai trò: ✔ Tách IO khỏi scheduler
+               ✔ Không làm chậm system
+               ✔ Đẩy failure xuống DB (EmailJob)
+4. QUEUE LAYER (DB-based) — EmailJob
+    + Bản chất: Database đóng vai trò Message Queue
+    + State machine: PENDING => PROCESSING => SENT
+                                     => FAILED => RETRY
+                                     => DEAD
+    + Vai trò: ✔ Lưu job bị fail
+               ✔ Là nguồn dữ liệu cho retry
+               ✔ Đảm bảo durability (không mất job)
+
+5. RETRY LAYER — EmailRetryScheduler
+    + Bản chất: Worker (consumer) của DB queue
+    + Flow: @Scheduled (mỗi 1 phút)
+            [1] Claim jobs:
+                UPDATE email_job
+                SET status = PROCESSING, processing_at = NOW()
+                WHERE status IN (FAILED, PENDING)
+                  AND next_retry_at <= NOW()
+                LIMIT N
+
+            => đảm bảo: mỗi job chỉ được 1 instance xử lý
+
+            [2] Load jobs có status = PROCESSING
+
+            [3] Với mỗi job:
+                TRY:
+                    gửi email
+                    => SUCCESS => status = SENT
+
+                CATCH:
+                    => tăng retryCount
+                    => nếu < maxRetry => FAILED + nextRetryAt
+                    => nếu >= maxRetry => DEAD
+    + Vai trò: ✔ Retry email bị fail
+               ✔ Xử lý queue
+               ✔ Áp dụng backoff retry
+               ✔ Đảm bảo không duplicate (DB locking)
+
+6. RECOVERY LAYER — EmailRecoverScheduler
+    + Bản chất: Self-healing mechanism
+    + Flow: @Scheduled (mỗi 1 phút)
+
+            [1] Tính threshold:
+                now - timeout (vd: 5 phút)
+
+            [2] Update:
+                PROCESSING => FAILED
+                nếu processing_at < threshold
+
+            => nghĩa là:
+                job bị kẹt quá lâu => reset để retry lại
+    + Vai trò: ✔ Detect job bị "kẹt" (do crash / timeout)
+               ✔ Reset để retry tiếp
+               ✔ Đảm bảo system không bị dead job
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+🔥 BUSINESS CONTEXT
+🎯 Tổng kết ngắn gọn trước
+
++ 3 layer:
+
+Core Product (Certificate)
++ Trust System (Verify)
++ Experience Layer (Milestone + Email)
+🧠 1. Toàn bộ SYSTEM FLOW (chuẩn hoá lại)
+
+Tôi gom lại thành 6 phase:
+
+🟢 PHASE A — GENERATE (Core Product)
+INIT => PREVIEW => STORY => OTP => VERIFY => ASYNC GENERATE
+
+👉 Ý nghĩa:
+
+CertificateSession = transaction boundary
+Certificate = immutable output
+
+👉 Thiết kế rất chuẩn:
+
+Session mutable
+Certificate immutable
+🟡 PHASE B — ASYNC + POLLING
+VERIFY OTP
+=> trigger async
+=> FE polling status
+=> COMPLETED => download
+
+👉 Chuẩn industry:
+
+✔ polling => sau nâng cấp WebSocket
+✔ không block user
+
+🔵 PHASE C — SHARE + PUBLIC VERIFY
+QR => /public/cert/{certId}
+=> verify RSA
+=> load story
+=> trust score
+=> timeline
+
+👉 Đây là:
+
+Trust System (rất xịn)
+🟣 PHASE D — ADMIN / ADVANCED
+
+✔ revoke
+✔ audit
+✔ verify history
+
+👉 đúng kiểu banking system mini
+
+🔴 PHASE E — EXPERIENCE LAYER (bạn vừa build)
+Scheduler
+=> MilestoneService
+=> EmailService
+⚫ PHASE F — RESILIENCE (rất quan trọng)
+Email fail
+=> EmailJob (DB)
+
+RetryScheduler
+=> retry
+
+RecoverScheduler
+=> fix stuck job
