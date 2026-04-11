@@ -1,0 +1,540 @@
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+🔥 1. GENERATE FLOW
+Step    API
+INIT    ✅ http://localhost:8080/core/love-certificates/v1/init
+PREVIEW ✅ http://localhost:8080/core/love-certificates/v1/preview
+SAVE STORY  ✅ http://localhost:8080/core/love-certificates/v1/sessions/upsert-story
+SEND OTP    ✅ http://localhost:8080/core/love-certificates/v1/send-otp
+VERIFY OTP  ✅ http://localhost:8080/core/love-certificates/v1/verify-otp
+GENERATE ASYNC  (internal @Async trong API4)
+
+🔥 2. STATUS FLOW
+Step    API
+CHECK STATUS    ✅ http://localhost:8080/core/love-certificates/v1/status/CS_D85650E4
+DOWNLOAD FILE   ✅ http://localhost:8080/core/love-certificates/v1/certificates/CS_D85650E4/download
+
+🔥 3. PUBLIC FLOW (CORE)
+Step    API
+PUBLIC PAGE ✅ http://localhost:8080/core/love-certificates/v1/public/cert/CERT_BA091E05
+
+🔥 4. STORY FLOW
+Step    API
+SAVE STORY  ✅ http://localhost:8080/core/love-certificates/v1/upsert-story
+HISTORY ✅ http://localhost:8080/core/love-certificates/v1/sessions/CS_D85650E4/story/history
+
+🔥 5. TRUST & TIMELINE
+Feature API
+TRUST SCORE ✅ http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/trust-score
+TIMELINE    ✅ http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/timeline
+(đã dùng trong PUBLIC PAGE rồi - đây gọi riêng để dễ scale)
+
+🔥 6. VERIFY APIs (đang “lẻ”)
+API         Vai trò
+http://localhost:8080/core/love-certificates/v1/verify-pdf/hash/CERT_BA091E05   => hash verify thủ công
+http://localhost:8080/core/love-certificates/v1/verify-pdf/signature/CERT_BA091E05  => rsa verify thủ công
+
+👉 ❗ KHÔNG nằm trong flow chính
+👉 dùng cho: debug / audit / advanced user
+
+🔥 7. ANALYTICS APIs
+API Vai trò
+http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/verify-summary        =>  thống kê
+http://localhost:8080/core/love-certificates/v1/admin/CERT_BA091E05/verify-history   => log chi tiết
+thuộc: admin / analytics layer
+
+🔥 8. ADMIN API
+API Vai trò
+http://localhost:8080/core/love-certificates/v1/revoke  =>  revoke cert
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+🔥 USER FLOW
+INIT → PREVIEW → STORY → OTP → VERIFY OTP (ASYNC GENERATE)
+→ STATUS → DOWNLOAD
+🔥 PUBLIC FLOW
+SCAN QR
+→ /public/cert/{certId}
+→ verify + story + trust + timeline
+🔥 ADMIN FLOW
+→ revoke
+→ verify history
+→ summary
+→ trust monitoring
+🔥 ADVANCED FLOW
+→ verify hash
+→ verify RSA
+
+----------------------------------------------------------------------DETAIL---------------------------------------------------------------------------------
+(#1) POST: http://localhost:8080/core/love-certificates/v1/init
+
+request: "{
+            "requestId": "req-002",
+            "maleName": "Trai",
+            "femaleName": "Gai",
+            "maleAge": 27,
+            "femaleAge": 25,
+            "loveStartDate": "2021-12-30"
+          }"
+
+response: "{
+               "requestId": "req-002",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:07:37.343150",
+               "data": {
+                   "sessionId": "CS_D85650E4",
+                   "status": "DRAFT",
+                   "createdAt": "2026-04-08T14:07:37.314165200"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#2) POST: http://localhost:8080/core/love-certificates/v1/preview
+
+request: "{
+            "requestId": "req-preview-001",
+            "sessionId": "CS_D85650E4"
+          }"
+response: "{
+               "requestId": "req-preview-001",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:07:45.259767",
+               "data": {
+                   "sessionId": "CS_D85650E4",
+                   "fileBase64": "JVBERi0xLjQKJfbk/N8KMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovVmVyc2lvbiAvMS43Ci9QYWdlcyAyIDAgUgo+PgplbmRvYmoKMyAwIG9iago8PAovQ3GFyZW50IDIgMCBSCi9Db250ZW50cyA4IDAgUgovUmVzb3V...
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#3) POST: http://localhost:8080/core/love-certificates/v1/sessions/upsert-story
+
+request: "{
+           "requestId": "req-003",
+           "sessionId": "CS_D85650E4",
+           "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖"
+         }"
+response: "{
+               "requestId": "req-003",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:07:50.026229400",
+               "data": {
+                   "sessionId": "CS_D85650E4",
+                   "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
+                   "version": 1,
+                   "updatedAt": "2026-04-08T14:07:50.0262294"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#4) POST: http://localhost:8080/core/love-certificates/v1/send-otp
+
+request: "{
+            "requestId": "req-preview-001",
+            "sessionId": "CS_D85650E4"
+          }"
+response: "{
+               "requestId": "req-preview-001",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:08:08.925477200",
+               "data": {
+                   "sessionId": "CS_D85650E4",
+                   "otpExpireIn": 120,
+                   "status": "OTP_SENT"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#5) POST: http://localhost:8080/core/love-certificates/v1/verify-otp
+
+request: "{
+            "requestId": "req-verify-001",
+            "sessionId": "CS_D85650E4",
+            "otp": "123456"
+          }"
+response: "{
+               "requestId": "req-verify-001",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:08:16.098083400",
+               "data": {
+                   "sessionId": "CS_D85650E4",
+                   "status": "VERIFIED"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#6) GET: http://localhost:8080/core/love-certificates/v1/status/CS_D85650E4
+response: "{
+               "requestId": "2191724f-7f1f-4b84-8745-6fcb1e0a02eb",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:08:49.623979400",
+               "data": {
+                   "certId": "CERT_BA091E05",
+                   "sessionId": "CS_D85650E4",
+                   "status": "COMPLETED",
+                   "fileUrl": "files/CERT_BA091E05.pdf"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#7) GET: /core/love-certificates/v1/certificates/CERT_BA091E05/download
+request:
+    Next step: Headers
+    Tab Headers:
+    Key Value
+        X-Request-Id    req-download-001
+        Accept  application/pdf
+response: PDF file
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#8) GET: http://localhost:8080/core/love-certificates/v1/public/cert/CERT_BA091E05
+
+response: "{
+               "requestId": "d3f9b521-63d0-4991-be04-7f2e72d3239b",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:08:58.190943700",
+               "data": {
+                   "certId": "CERT_BA091E05",
+                   "valid": true,
+                   "status": "VALID",
+                   "loveStory": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
+                   "trustScore": 0,
+                   "trustLevel": "LOW_TRUST",
+                   "revoked": false,
+                   "storyHistory": [
+                       {
+                           "sessionId": "CS_D85650E4",
+                           "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
+                           "version": 1,
+                           "updatedAt": "2026-04-08T14:07:50.026229"
+                       }
+                   ],
+                   "timeline": {
+                       "certId": "CERT_BA091E05",
+                       "loveStartDate": "2021-12-30",
+                       "today": "2026-04-08",
+                       "totalDays": 1560,
+                       "pastMilestones": [
+                           {
+                               "label": "1 Year Anniversary 🥂",
+                               "date": "2022-12-30",
+                               "days": 365,
+                               "passed": true,
+                               "current": false,
+                               "progressPercent": 0,
+                               "relativeText": "1195 days ago 💭",
+                               "today": false
+                           },
+                           {
+                               "label": "100 Days 💕",
+                               "date": "2022-04-09",
+                               "days": 100,
+                               "passed": true,
+                               "current": false,
+                               "progressPercent": 0,
+                               "relativeText": "1460 days ago 💭",
+                               "today": false
+                           },
+                           {
+                               "label": "1 Month 🎉",
+                               "date": "2022-01-29",
+                               "days": 30,
+                               "passed": true,
+                               "current": false,
+                               "progressPercent": 0,
+                               "relativeText": "1530 days ago 💭",
+                               "today": false
+                           },
+                           {
+                               "label": "First Day 💖",
+                               "date": "2021-12-30",
+                               "days": 0,
+                               "passed": true,
+                               "current": false,
+                               "progressPercent": 0,
+                               "relativeText": "1560 days ago 💭",
+                               "today": false
+                           }
+                       ],
+                       "currentMilestone": [
+                           {
+                               "label": "2 Years Anniversary 💎",
+                               "date": "2023-12-30",
+                               "days": 730,
+                               "passed": true,
+                               "current": true,
+                               "progressPercent": 75,
+                               "relativeText": "830 days ago 💭",
+                               "today": false
+                           }
+                       ],
+                       "upcomingMilestones": [
+                           {
+                               "label": "5 Years Anniversary 🎉",
+                               "date": "2026-12-29",
+                               "days": 1825,
+                               "passed": false,
+                               "current": false,
+                               "progressPercent": 0,
+                               "relativeText": "In 265 days 🎯",
+                               "today": false
+                           },
+                           {
+                               "label": "10 Years Anniversary 🏆",
+                               "date": "2031-12-28",
+                               "days": 3650,
+                               "passed": false,
+                               "current": false,
+                               "progressPercent": 0,
+                               "relativeText": "In 2090 days 🎯",
+                               "today": false
+                           }
+                       ]
+                   }
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#9) GET: http://localhost:8080/core/love-certificates/v1/verify-pdf/hash/CERT_BA091E05
+
+response: "{
+               "requestId": "0004af57-00e6-42d3-9245-e5d4ed6b9143",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:09:11.825821400",
+               "data": {
+                   "certId": "CERT_BA091E05",
+                   "method": "HASH",
+                   "status": "VALID",
+                   "valid": true,
+                   "expectedHash": "1979d812c0d84525e362e5e08b790d892224a25effe91d09051510468bdd5466",
+                   "actualHash": "1979d812c0d84525e362e5e08b790d892224a25effe91d09051510468bdd5466",
+                   "verifiedAt": "2026-04-08T14:09:11.8258214"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#10) GET : http://localhost:8080/core/love-certificates/v1/verify-pdf/signature/CERT_BA091E05
+
+response: "{
+               "requestId": "1915d038-b383-41a6-9a90-822b25df6f2d",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:09:16.426827300",
+               "data": {
+                   "certId": "CERT_BA091E05",
+                   "method": "RSA",
+                   "status": "VALID",
+                   "valid": true,
+                   "signature": "JtXvrueF7RB3krSmhp+LE1MquRBircaev08KBW59j2EtBT0XSL9SZ6le5qicPI97N9hjUIOipaeGiphpmmRdsJQl3fzfHka3Jrft5/70ZvRJvcZ0M6Y2sM/Eq2l/y76ttph5CyO4W+azCEJ2kUiy3/nFNm1fuW97IC54iLNK1haHnK8gJ6/N7ykXKyHefZBEpzNrY+Mf9t4zaevLpDw+NHdBJz8qtsYwF0MVdU6wSKxJOGK9X3BsrTy48dibz9rYuQj1lJHWuflhWOpoTSj0aAb6g5ftnIoMEAVKbGrXRz0ND7+4myy4EONk1dLt3qbqsNkx8FtXzCc0CfCnkESesA==",
+                   "verifiedAt": "2026-04-08T14:09:16.4268273"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#11) GET: http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/verify-summary
+
+response: "{
+               "requestId": "548fb9c2-874a-4bae-a083-62a64e9f32bd",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:10:07.229883600",
+               "data": {
+                   "certId": "CERT_BA091E05",
+                   "total": 2,
+                   "lastVerifiedAt": "2026-04-08T14:09:16.426452",
+                   "status": "VALID"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#12) GET: http://localhost:8080/core/love-certificates/v1/admin/CERT_BA091E05/verify-history
+
+response: "{
+               "requestId": "28980388-55d7-4e07-bb92-6f1616e71536",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:10:20.687289300",
+               "data": {
+                   "certId": "CERT_BA091E05",
+                   "total": 2,
+                   "logs": [
+                       {
+                           "method": "RSA",
+                           "result": "VALID",
+                           "ip": "127.0.0.1",
+                           "userAgent": "PostmanRuntime/7.53.0",
+                           "verifiedAt": "2026-04-08T14:09:16.426452"
+                       },
+                       {
+                           "method": "HASH",
+                           "result": "VALID",
+                           "ip": "127.0.0.1",
+                           "userAgent": "PostmanRuntime/7.53.0",
+                           "verifiedAt": "2026-04-08T14:09:11.823231"
+                       }
+                   ]
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#13) POST: http://localhost:8080/core/love-certificates/v1/revoke
+
+request: "{
+            "requestId": "req-005",
+            "certId": "CERT_BA091E05",
+            "reason": "I like it!"
+          }"
+response: "{
+               "requestId": "req-005",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:10:39.961329500",
+               "data": {
+                   "requestId": "req-005",
+                   "certId": "CERT_BA091E05",
+                   "status": "REVOKED",
+                   "revokedAt": "2026-04-08T14:10:39.9613295",
+                   "message": "Certificate revoked successfully"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+GET: http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/trust-score
+
+response: "{
+               "requestId": "79f17963-0186-4d5f-95cd-a7587d5b26ed",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:09:20.785158100",
+               "data": {
+                   "certId": "CERT_BA091E05",
+                   "score": 60,
+                   "level": "MEDIUM_TRUST",
+                   "revoked": false,
+                   "totalVerify": 2,
+                   "uniqueUsers": 1,
+                   "lastVerifiedAt": "2026-04-08T14:09:16.426452",
+                   "fraud": {
+                       "bot": false,
+                       "spam": false,
+                       "suspicious": false
+                   }
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+GET: http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/timeline
+
+response: "{
+               "requestId": "2e86bbb5-278f-4bf6-900f-8d284d28ace5",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:09:25.740874200",
+               "data": {
+                   "certId": "CERT_BA091E05",
+                   "loveStartDate": "2021-12-30",
+                   "today": "2026-04-08",
+                   "totalDays": 1560,
+                   "pastMilestones": [
+                       {
+                           "label": "1 Year Anniversary 🥂",
+                           "date": "2022-12-30",
+                           "days": 365,
+                           "passed": true,
+                           "current": false,
+                           "progressPercent": 0,
+                           "relativeText": "1195 days ago 💭",
+                           "today": false
+                       },
+                       {
+                           "label": "100 Days 💕",
+                           "date": "2022-04-09",
+                           "days": 100,
+                           "passed": true,
+                           "current": false,
+                           "progressPercent": 0,
+                           "relativeText": "1460 days ago 💭",
+                           "today": false
+                       },
+                       {
+                           "label": "1 Month 🎉",
+                           "date": "2022-01-29",
+                           "days": 30,
+                           "passed": true,
+                           "current": false,
+                           "progressPercent": 0,
+                           "relativeText": "1530 days ago 💭",
+                           "today": false
+                       },
+                       {
+                           "label": "First Day 💖",
+                           "date": "2021-12-30",
+                           "days": 0,
+                           "passed": true,
+                           "current": false,
+                           "progressPercent": 0,
+                           "relativeText": "1560 days ago 💭",
+                           "today": false
+                       }
+                   ],
+                   "currentMilestone": [
+                       {
+                           "label": "2 Years Anniversary 💎",
+                           "date": "2023-12-30",
+                           "days": 730,
+                           "passed": true,
+                           "current": true,
+                           "progressPercent": 75,
+                           "relativeText": "830 days ago 💭",
+                           "today": false
+                       }
+                   ],
+                   "upcomingMilestones": [
+                       {
+                           "label": "5 Years Anniversary 🎉",
+                           "date": "2026-12-29",
+                           "days": 1825,
+                           "passed": false,
+                           "current": false,
+                           "progressPercent": 0,
+                           "relativeText": "In 265 days 🎯",
+                           "today": false
+                       },
+                       {
+                           "label": "10 Years Anniversary 🏆",
+                           "date": "2031-12-28",
+                           "days": 3650,
+                           "passed": false,
+                           "current": false,
+                           "progressPercent": 0,
+                           "relativeText": "In 2090 days 🎯",
+                           "today": false
+                       }
+                   ]
+               }
+           }"
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#14) GET: http://localhost:8080/core/love-certificates/v1/CS_D85650E4/story
+
+response: "{
+               "requestId": "720addc6-646c-4d5e-89f1-18085f53983b",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:11:01.720235700",
+               "data": {
+                   "sessionId": "CS_D85650E4",
+                   "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
+                   "version": 1,
+                   "updatedAt": "2026-04-08T14:07:50.026229"
+               }
+           }"
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+(#15) GET: http://localhost:8080/core/love-certificates/v1/sessions/CS_D85650E4/story/history
+
+response: "{
+               "requestId": "7deff4fc-cb9c-45b0-a100-c659c5e65492",
+               "code": "00",
+               "message": "SUCCESS",
+               "timestamp": "2026-04-08T14:11:07.771522400",
+               "data": [
+                   {
+                       "sessionId": "CS_D85650E4",
+                       "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
+                       "version": 1,
+                       "updatedAt": "2026-04-08T14:07:50.026229"
+                   }
+               ]
+           }"
