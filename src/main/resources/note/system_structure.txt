@@ -121,6 +121,7 @@ src.main.java
 				business_context.txt
 				feature.txt
 				generate_key.txt
+				system_structure.txt
 				system_workflow.txt
 			sql
 				rule_config.sql
