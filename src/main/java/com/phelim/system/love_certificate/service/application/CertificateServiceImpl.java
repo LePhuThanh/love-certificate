@@ -1,5 +1,6 @@
 package com.phelim.system.love_certificate.service.application;
 
+import com.phelim.system.love_certificate.config.LoveCertificateProperties;
 import com.phelim.system.love_certificate.constant.BaseConstants;
 import com.phelim.system.love_certificate.constant.CertSessionStatus;
 import com.phelim.system.love_certificate.dto.request.*;
@@ -20,6 +21,7 @@ import com.phelim.system.love_certificate.service.domain.*;
 import com.phelim.system.love_certificate.util.LoveCertificateUtil;
 import com.phelim.system.love_certificate.util.PhoneNumberNormalizer;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
@@ -29,10 +31,10 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.HtmlUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -50,7 +52,6 @@ public class CertificateServiceImpl implements CertificateService {
     private final CertificateSessionRepository sessionRepo;
     private final CertificateRepository certRepo;
     private final RuleEngineService ruleEngine;
-    private final FileStorageService fileStorageService;
     private final PdfService pdfService;
     private final TemplateService templateService;
     private final HashSignatureService hashSignatureService;
@@ -61,6 +62,9 @@ public class CertificateServiceImpl implements CertificateService {
     private final TimelineService timelineService;
     private final VerifyLogService verifyLogService;
     private final PhoneNumberNormalizer phoneNumberNormalizer;
+    private final OtpService otpService;
+    private final LoveCertificateProperties loveCertificateProperties;
+    private final CertificateAsyncService certAsyncService;
 
     private final CacheManager cacheManager;
 
@@ -146,121 +150,177 @@ public class CertificateServiceImpl implements CertificateService {
             throw new BusinessException(ErrorCode.INVALID_STATE, "Preview only allowed in DRAFT", "sessionId=" + session.getSessionId());
         }
 
-//        String otp = generateOtp();
+        // Validate phoneNumber
+        String phoneNumber = req.getPhoneNumber();
+        String phoneE164Format = phoneNumberNormalizer.toE164(phoneNumber, req.getRegion());
+
+        String corePhoneE164Format = session.getPhoneNumber();
+        String corePhoneNumber = phoneNumberNormalizer.toNational(corePhoneE164Format, req.getRegion());
+
+        if(!phoneE164Format.equals(corePhoneE164Format)){
+            log.warn("[CertificateServiceImpl][sendOtp] The provided phone number mismatch the core phone number. phoneNumber={}, corePhoneNumber={}, region={}, requestId={}, sessionId={}",
+                    phoneNumber, corePhoneNumber, req.getRegion(), req.getRequestId(), req.getSessionId());
+            throw new BusinessException(ErrorCode.PHONE_MISMATCH, String.format("phoneNumber=%s, corePhoneNumber=%s, region=%s, requestId=%s, sessionId=%s",
+                    phoneNumber, corePhoneNumber, req.getRegion(), req.getRequestId(), req.getSessionId()));
+        }
+        //Otp Generation
+//        String otp = otpService.generateOtp();
+//        byte[] salt = otpService.generateSalt();
+//        String otpHash = otpService.hashOtp(otpCode, salt);
+//        String otpSalt = otpService.encodeSalt(salt);
+
         String otp = "123456";
 
-//        session.getOtp(otp);
+        session.setOtp(otp);
+//        session.setOtpHash(otpHash);
+//        session.setOtpSalt(otpSalt);
         session.setOtpExpireAt(LocalDateTime.now().plusMinutes(2));
         session.setStatus(CertSessionStatus.OTP_PENDING);
         session.setUpdatedAt(LocalDateTime.now());
 
         sessionRepo.save(session);
-        log.info("[CertificateServiceImpl][sendOtp] OTP={} sessionId={}", otp, session.getSessionId());
+
+        // Send OTP via SMS
+        otpService.sendOtp(phoneNumber, otp);
+
+        log.info("[CertificateServiceImpl][sendOtp] Otp={} sessionId={}", otp, session.getSessionId());
     }
 
+
+    /**
+     *
+     1. DB-level lock (most important)
+     FOR UPDATE → only one thread can process the session
+     2. afterCommit → prevents rollback bugs
+     async only runs when the DB has committed
+     3. Async still has its own lock
+     double protection (defensive design)
+     4. Idempotent check
+     PROCESSING / COMPLETED → return
+     */
     @Override
+    @Transactional
     public void verifyOtp(VerifyOtpRequest req) {
         log.info("[CertificateServiceImpl][verifyOtp] Start. sessionId={}, otp={}", req.getSessionId(), req.getOtp());
+        log.debug("-------------------------------Thread verifyOtp: {}", Thread.currentThread().getName());
+        log.debug("START verifyOtp {}", System.currentTimeMillis());
 
-        CertificateSession session = getSession(req.getSessionId());
+        final int MAX_OTP_RETRY = loveCertificateProperties.getMaxOtpRetry(); //3
+
+        // Validate sessionId exists - LOCK session here
+        CertificateSession session = getSessionForUpdate(req.getSessionId());
+        // Validate requestId unique
+
+        // Idempotent check FIRST (after lock)
+        // Validate certificate session not completed //COMPLETED (generated cert) => return success (idempotent)
+        if (session.isCompleted()) {
+            log.info("[CertificateServiceImpl][verifyOtp] Certificate session already completed. sessionId={}", req.getSessionId());
+
+            Optional<Certificate> existingCert = certRepo.findBySessionId(req.getSessionId());
+            if (existingCert.isEmpty()) {
+                log.warn("[CertificateServiceImpl][verifyOtp] Certificate not found. sessionId={}", req.getSessionId());
+                throw new BusinessException(ErrorCode.CERTIFICATE_NOT_FOUND, "sessionId=" + req.getSessionId());
+            }
+            return;
+        }
+
+        // Validate certificate session only OTP_PENDING status
         if (!CertSessionStatus.OTP_PENDING.equals(session.getStatus())) {
             log.warn("[CertificateServiceImpl][verifyOtp] Only allowed in OTP_PENDING. sessionId={}", req.getSessionId());
             throw new BusinessException(ErrorCode.INVALID_STATE, "verifyOtp only allowed in OTP_PENDING", "sessionId=" + session.getSessionId());
         }
 
-        if (LocalDateTime.now().isAfter(session.getOtpExpireAt())) {
+        // Validate OTP not expired
+        if(session.isOtpExpired()){
+            if (!CertSessionStatus.EXPIRED.equals(session.getStatus())) {
+                session.setStatus(CertSessionStatus.EXPIRED);
+                session.incrementRetryCount();
+                session.setUpdatedAt(LocalDateTime.now());
+                sessionRepo.save(session);
+            }
+            log.warn("[CertificateServiceImpl][verifyOtp] OTP expired for sessionId: {}", req.getSessionId());
             throw new BusinessException(ErrorCode.OTP_EXPIRED, "sessionId=" + req.getSessionId());
         }
 
-        if (!session.getOtp().equals(req.getOtp())) {
-            session.setRetryCount(session.getRetryCount() + 1);
-            sessionRepo.save(session);
-            throw new BusinessException(ErrorCode.INVALID_OTP, "sessionId=" + req.getSessionId());
+        // Validate max retry exceeded — Only update status OTP_FAILED, no incrementRetryCount
+        if (session.isMaxRetryExceeded(MAX_OTP_RETRY)) {
+            if (!session.getStatus().equals(CertSessionStatus.OTP_FAILED)) {
+                session.setStatus(CertSessionStatus.OTP_FAILED);
+                session.setUpdatedAt(LocalDateTime.now());
+                sessionRepo.save(session);
+            }
+            log.warn("[CertificateServiceImpl][verifyOtp] Max retry exceeded for sessionId: {}", req.getSessionId());
+            throw new BusinessException(ErrorCode.MAX_RETRY_EXCEEDED, "sessionId = " + req.getSessionId());
         }
 
+//        boolean isValid = otpService.verifyOtp(req.getOtp(), session.getOtpHash(), session.getOtpSalt());
+//        if(!isValid){
+//            session.incrementRetryCount();
+//
+//            if (session.isMaxRetryExceeded(MAX_OTP_RETRY)) {
+//                session.setStatus(CertSessionStatus.OTP_FAILED);
+//            }
+//            session.setUpdatedAt(LocalDateTime.now());
+//            sessionRepo.save(session);
+//
+//            int remaining = Math.max(0, MAX_OTP_RETRY - session.getRetryCount());
+//            log.warn("[CertificateServiceImpl][verifyOtp] Invalid OTP for sessionId: {}. actualRemaining: {}",
+//                    req.getSessionId(), MAX_OTP_RETRY - session.getRetryCount());
+//            throw new BusinessException(ErrorCode.INVALID_OTP, "Attempts remaining=" + remaining);
+//        }
+
+        // Verify OTP — if incorrect, increment retry and calculate retry directly.
+        if (!session.getOtp().equals(req.getOtp())) {
+            session.incrementRetryCount();
+
+            if (session.isMaxRetryExceeded(MAX_OTP_RETRY)) {
+                session.setStatus(CertSessionStatus.OTP_FAILED);
+            }
+            session.setUpdatedAt(LocalDateTime.now());
+            sessionRepo.save(session);
+
+            int remaining = Math.max(0, MAX_OTP_RETRY - session.getRetryCount());
+            log.warn("[CertificateServiceImpl][verifyOtp] Invalid OTP for sessionId: {}. actualRemaining: {}",
+                    req.getSessionId(), MAX_OTP_RETRY - session.getRetryCount());
+            throw new BusinessException(ErrorCode.INVALID_OTP, "Attempts remaining=" + remaining);
+        }
+
+        // Lock link session (prevent replay)
         session.setStatus(CertSessionStatus.OTP_VERIFIED);
         sessionRepo.save(session);
 
-        // trigger async
-        generateAsync(session.getSessionId());
-    }
 
-    /** Cmt by Phelim
-     *  => Flow generate certificate (final design)
+        /** Cmt by Pheim (13/04/2026)
+         * Only call generateAsync AFTER the transaction verifyOtp COMMIT is successful.
 
-     *      1. Render HTML draft (QR placeholder)
-     *      2. Generate draft PDF (ensure layout stable)
-     *      3. Build verify URL (no hash, server-side verification)
-     *      4. Render final HTML with QR (verify endpoint)
-     *      5. Generate final PDF
-     *      6. Compute SHA-256 hash of final PDF (integrity)
-     *      7. Persist file + hash
+         * If you call it directly: certAsyncService.generateAsync(sessionId);
+         * => then async might run when:
+         * 1. the transaction verifyOtp is not committed
+         * 2. or is rolled back
 
-     *      => Design note:
-     *      - QR only contains certId (no hash)
-     *      - Verification is server-driven (recompute hash from stored file)
-     *      - Avoids double-render dependency between QR and hash
-
-     *      => Security model:
-     *      - File integrity is guaranteed by SHA-256 hash
-     *      - Hash is computed from final persisted PDF
-     *      - Any modification of PDF will break hash equality
-     */
-    @Async(BaseConstants.ASYNC_NAME)
-    public void generateAsync(String sessionId) {
-        log.info("[CertificateServiceImpl][verifyOtp] Start. sessionId={}", sessionId);
-
-        CertificateSession session = getSession(sessionId);
-        session.setStatus(CertSessionStatus.PROCESSING);
-        sessionRepo.save(session);
-        try {
-            int days = (int) ChronoUnit.DAYS.between(
-                    session.getLoveStartDate(),
-                    LocalDate.now()
-            );
-
-            CertificateType type = ruleEngine.determineType(days);
-            String certId = generateCertId();
-            Certificate cert = Certificate.builder()
-                    .certId(certId)
-                    .sessionId(sessionId)
-                    .durationDays(days)
-                    .type(type)
-                    .issuedAt(LocalDateTime.now())
-                    .build();
-
-            // STEP 1: Render HTML draft (QR placeholder) + Generate draft PDF (ensure layout stable)
-            String htmlDraft = templateService.renderCertificate(cert, session, BaseConstants.DUMMY);
-            byte[] draftPdf = pdfService.generatePdf(htmlDraft);
-
-            // STEP 2: build verifyUrl
-            String verifyUrl = "http://localhost:8080/core/love-certificates/v1/public/cert/" + certId;
-
-            // STEP 3: re-render HTML FINAL + generate PDF FINAL
-            String finalHtml = templateService.renderCertificate(cert, session, verifyUrl);
-            byte[] finalPdf = pdfService.generatePdf(finalHtml);
-
-            // STEP 4: HASH FINAL PDF
-            String hash = hashSignatureService.hash(finalPdf);
-
-            // 🔐 Add signature (Only VerifyType.RSA)
-            String signature = rsaSignatureService.sign(finalPdf);
-            cert.setSignature(signature);
-
-            // Save file
-            String fileUrl = fileStorageService.savePdfFile(certId + ".pdf", finalPdf);
-
-            cert.setFileHash(hash);
-            cert.setFileUrl(fileUrl);
-
-            certRepo.save(cert);
-            session.setStatus(CertSessionStatus.COMPLETED);
-
-        } catch (Exception ex) {
-            log.error("[generateAsync] failed sessionId={}", sessionId, ex);
-            session.setStatus(CertSessionStatus.FAILED);
-        }
-        sessionRepo.save(session);
+         * USE afterCommit
+         * verifyOtp()
+         *    ↓
+         * DB commit successful
+         *    ↓
+         * afterCommit() trigger
+         *    ↓
+         * @Async run
+         */
+        /**
+         * It only changes the timing of the call, not the async nature of the call.
+         * Can use Spring event (@TransactionalEventListener(phase = AFTER_COMMIT)), message queue (Kafka/RabbitMQ) in the future
+         */
+        // Trigger async
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        certAsyncService.generateAsync(session.getSessionId());
+                    }
+                }
+        );
+        log.debug("END verifyOtp {}", System.currentTimeMillis());
     }
 
     @Override
@@ -366,11 +426,11 @@ public class CertificateServiceImpl implements CertificateService {
     // HASH VERIFY
     @Override
     public VerifyPdfResponse verifyByHash(String certId, HttpServletRequest request) {
-        log.info("[CertificateServiceImpl][verifyByHash] Start certId={}", certId);
+        log.info("[CertificateVerifyService][verifyByHash] Start certId={}", certId);
 
         Certificate cert = certRepo.findById(certId)
                 .orElseThrow(() -> {
-                    log.warn("[CertificateServiceImpl][verifyByHash] Not found certId={}", certId);
+                    log.warn("[CertificateVerifyService][verifyByHash] Not found certId={}", certId);
                     return new BusinessException(ErrorCode.SESSION_NOT_FOUND, "certId=" + certId);
                 });
 
@@ -400,7 +460,7 @@ public class CertificateServiceImpl implements CertificateService {
                     .build();
 
         } catch (IOException ex) {
-            log.error("[CertificateServiceImpl][verifyByHash] File read failed certId={}", certId, ex);
+            log.error("[verifyByHash] File read failed certId={}", certId, ex);
             throw new BusinessException(ErrorCode.FILE_READ_FAILED, "certId=" + certId);
         }
     }
@@ -408,11 +468,11 @@ public class CertificateServiceImpl implements CertificateService {
     // RSA VERIFY
     @Override
     public VerifyPdfResponse verifyPdfByRsaSignature(String certId, HttpServletRequest request) {
-        log.info("[CertificateServiceImpl][verifyPdfByRsaSignature] certId={}", certId);
+        log.info("[CertificateVerifyService][verifyPdfByRsaSignature] certId={}", certId);
 
         Certificate cert = certRepo.findById(certId)
                 .orElseThrow(() -> {
-                    log.warn("[CertificateServiceImpl][verifyPdfByRsaSignature] Not found certId={}", certId);
+                    log.warn("[CertificateVerifyService][verifyPdfByRsaSignature] Not found certId={}", certId);
                     return new BusinessException(ErrorCode.SESSION_NOT_FOUND, "certId=" + certId);
                 });
 
@@ -440,7 +500,7 @@ public class CertificateServiceImpl implements CertificateService {
                     .build();
 
         } catch (IOException ex) {
-            log.error("[CertificateServiceImpl][verifyPdfByRsaSignature] File read failed certId={}", certId, ex);
+            log.error("[CertificateVerifyService][verifyPdfByRsaSignature] File read failed certId={}", certId, ex);
             throw new BusinessException(ErrorCode.FILE_READ_FAILED, "certId=" + certId);
         }
     }
@@ -688,10 +748,6 @@ public class CertificateServiceImpl implements CertificateService {
         return BaseConstants.PREFIX_SESSION_ID + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
-    private String generateCertId() {
-        return BaseConstants.PREFIX_CERTIFICATE_ID + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-    }
-
     private String generateStoryId() {
         return BaseConstants.PREFIX_LOVE_STORY_ID + System.currentTimeMillis();
     }
@@ -716,7 +772,8 @@ public class CertificateServiceImpl implements CertificateService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.SESSION_NOT_FOUND, "sessionId=" + sessionId));
     }
 
-    private String generateOtp() {
-        return String.valueOf(100000 + new Random().nextInt(900000));
+    private CertificateSession getSessionForUpdate(String sessionId) {
+        return sessionRepo.findBySessionIdForUpdate(sessionId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SESSION_NOT_FOUND, "sessionId=" + sessionId));
     }
 }
