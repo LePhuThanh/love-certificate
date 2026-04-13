@@ -30,6 +30,15 @@
     => lưu file + hash + signature
     => status = COMPLETED
 
+    * afterCommit + @Async (TransactionSynchronizationManager)
+    Thread A (request)
+      └─ verifyOtp()
+          └─ commit transaction
+              └─ afterCommit()
+                   └─ gọi generateAsync()
+
+    Thread B (async pool)
+      └─ chạy generateAsync()
 
 
 🔥 B. STATUS FLOW (polling + async)
@@ -146,6 +155,8 @@ reset => FAILED
             ↓
 retry lại
 
+Có caching
+Có custom Annotation @PhoneNumber & Using libphonenumber
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 Cmt by Phelim (10/04/2026)
 Flow hoạt động của CACHE (filter)

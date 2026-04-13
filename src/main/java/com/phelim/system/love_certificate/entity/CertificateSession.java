@@ -1,5 +1,8 @@
 package com.phelim.system.love_certificate.entity;
 
+import com.phelim.system.love_certificate.enums.CertSessionStatus;
+import com.phelim.system.love_certificate.enums.Region;
+import com.phelim.system.love_certificate.validation.annotation.PhoneNumber;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -48,7 +51,7 @@ public class CertificateSession {
     private LocalDate loveStartDate;
 
     @Column(name = "status")
-    private String status; // DRAFT, OTP_PENDING, VERIFIED, PROCESSING, COMPLETED, FAILED
+    private String status; // DRAFT, OTP_PENDING, VERIFIED, PROCESSING, COMPLETED, OTP_FAILED, FAILED
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -56,13 +59,18 @@ public class CertificateSession {
     private LocalDateTime updatedAt;
 
     // Otp
-    @Column(name = "otp_code")
-    private String otpCode;
+    @Column(name = "otp")
+    @Pattern(regexp = "^\\d{6}$", message = "Otp must be 6 digits")
+    private String otp;
+    //    @Column(name = "otp_hash")
+//    private String otpHash;
+//    @Column(name = "otp_salt")
+//    private String otpSalt;
     @Column(name = "otp_expire_at")
     private LocalDateTime otpExpireAt;
     @Column(name = "retry_count")
     @Builder.Default
-    private Integer retryCount = 0;
+    private int retryCount = 0;
 
     //    @Pattern(
 //            regexp = "^[A-Za-z0-9+_.-]+@(.+)$",
@@ -72,4 +80,30 @@ public class CertificateSession {
     @Email
     @Column(name = "email")
     private String email;
+
+    @NotBlank(message = "phoneNumber is required")
+    @PhoneNumber(allowInternational = true)
+    @Column(name = "phone_number")
+    private String phoneNumber;
+    @Column(name = "region")
+    @NotNull(message = "region is required")
+    private Region region;
+
+
+
+    public boolean isOtpExpired() {
+        return otpExpireAt != null && LocalDateTime.now().isAfter(otpExpireAt);
+    }
+
+    public boolean isMaxRetryExceeded(int maxRetry) {
+        return retryCount >= maxRetry;
+    }
+
+    public void incrementRetryCount() {
+        this.retryCount++;
+    }
+
+    public boolean isCompleted() {
+        return CertSessionStatus.COMPLETED.equals(status);
+    }
 }
