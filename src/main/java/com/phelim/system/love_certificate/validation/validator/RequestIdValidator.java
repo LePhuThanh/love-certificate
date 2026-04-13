@@ -1,4 +1,4 @@
-package com.phelim.system.love_certificate.util;
+package com.phelim.system.love_certificate.validation.validator;
 
 import com.phelim.system.love_certificate.constant.BaseConstants;
 import com.phelim.system.love_certificate.dto.HasRequestId;
