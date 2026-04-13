@@ -21,9 +21,7 @@ public interface CertificateService {
     CertificateRevokeResponse revoke(CertificateRevokeRequest request);
     CertificateVerifyHistoryResponse getVerifyCertificateHistory(String certId);
     CertificateVerifySummaryResponse getVerifySummary(String certId);
-//    CertificateTrustScoreResponse getTrustScore(String certId);
 
-    //    CertificateTimelineResponse getTimeline(String certId);
     LoveStoryResponse getLoveStory(String sessionId);
     LoveStoryResponse upsertLoveStory(LoveStoryRequest request);
     List<LoveStoryResponse> getLoveStoryHistory(String sessionId);
