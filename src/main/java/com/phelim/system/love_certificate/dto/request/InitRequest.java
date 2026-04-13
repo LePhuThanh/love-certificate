@@ -1,6 +1,8 @@
 package com.phelim.system.love_certificate.dto.request;
 
 import com.phelim.system.love_certificate.dto.HasRequestId;
+import com.phelim.system.love_certificate.enums.Region;
+import com.phelim.system.love_certificate.validation.annotation.PhoneNumber;
 import jakarta.persistence.Column;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -35,4 +37,11 @@ public class InitRequest implements HasRequestId {
     @NotBlank(message = "email is required")
     @Email(message = "Invalid email format")
     private String email;
+
+    @NotBlank(message = "phoneNumber is required")
+    @PhoneNumber(allowInternational = true)
+    private String phoneNumber;
+    @NotNull(message = "region is required")
+    private Region region;
+
 }

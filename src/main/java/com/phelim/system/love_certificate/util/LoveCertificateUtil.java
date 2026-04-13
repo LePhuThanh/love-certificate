@@ -2,6 +2,12 @@ package com.phelim.system.love_certificate.util;
 
 public class LoveCertificateUtil {
 
+    /** Cmt by Phelim (13/04/2026)
+     *     127.0.0.1                                127.0.xxx.xxx
+     *     192.168.1.10                             192.168.xxx.xxx
+     *     0:0:0:0:0:0:0:1                          127.0.0.1
+     *     2001:db8:abcd:0012:0000:0000:0000:0001   2001:db8:xxxx:xxxx
+     */
     public static String maskIp(String ip) {
         if (ip == null || ip.isBlank()) return null;
 
@@ -29,8 +35,5 @@ public class LoveCertificateUtil {
         }
         return ip; // fallback
     }
-    //127.0.0.1                                 127.0.xxx.xxx
-    //192.168.1.10                              192.168.xxx.xxx
-    //0:0:0:0:0:0:0:1                           127.0.0.1
-    //2001:db8:abcd:0012:0000:0000:0000:0001    2001:db8:xxxx:xxxx
+
 }

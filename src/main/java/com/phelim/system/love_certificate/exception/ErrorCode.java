@@ -44,8 +44,16 @@ public enum ErrorCode {
     FEIGN_CLIENT_UNAVAILABLE("503", "Dịch vụ tạm thời không khả dụng"),
     FEIGN_CLIENT_INVALID_RESPONSE("FC110", "Invalid response from FeignClient service"),
 
-    CERTIFICATE_REVOKED("FC110", "Cannot update love story after revoke");
+    CERTIFICATE_REVOKED("FC110", "Cannot update love story after revoke"),
+    CERTIFICATE_NOT_FOUND("FC110", "Certificate not found"),
 
+    PHONE_NUMBER_INVALID_FORMAT("FC110","Invalid phone number format"),
+    VN_PHONE_NUMBER_INVALID_FORMAT("FC110","Invalid phone number format"),
+    INTL_PHONE_NUMBER_INVALID_FORMAT("FC110","Invalid phone number format"),
+
+    MAX_RETRY_EXCEEDED("FC110","Exceeded the number of OTP retry."),
+
+    PHONE_MISMATCH("FC110", "Phone number mismatch the core session phone number");
 
     private final String code;
     private final String message;

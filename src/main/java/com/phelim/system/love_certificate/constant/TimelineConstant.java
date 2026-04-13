@@ -4,7 +4,11 @@ import com.phelim.system.love_certificate.model.Milestone;
 
 import java.util.List;
 
-public class TimelineConstant {
+public final class TimelineConstant {
+
+    private TimelineConstant() {
+        // prevent instantiation
+    }
 
     public static final List<Milestone> MILESTONES = List.of(
             new Milestone(0, "First Day 💖"),
@@ -16,7 +20,4 @@ public class TimelineConstant {
             new Milestone(3650, "10 Years Anniversary 🏆")
     );
 
-    private TimelineConstant() {
-        // prevent instantiation
-    }
 }
