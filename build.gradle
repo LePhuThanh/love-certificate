@@ -43,10 +43,13 @@ dependencies {
 
 	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
+
 	//Caching
 	implementation 'org.springframework.boot:spring-boot-starter-cache'
 	implementation 'com.github.ben-manes.caffeine:caffeine'
 
+	//handle phoneNumber custom annotation + libphonenumber
+	implementation 'com.googlecode.libphonenumber:libphonenumber:9.0.25'
 }
 
 dependencyManagement {

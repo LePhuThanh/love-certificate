@@ -26,7 +26,6 @@ public class ClientService {
         SmsRequest request = SmsRequest.builder()
                 .phoneNumber(phoneNumber)
                 .content(message)
-                .keyword(partnerName)
                 .build();
         try {
             LoveCertificateResponse<Boolean> response = smsClient.sendOtp(request);

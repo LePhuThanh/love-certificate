@@ -2,7 +2,6 @@ package com.phelim.system.love_certificate.dto.request;
 
 import com.phelim.system.love_certificate.dto.HasRequestId;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
 @Getter
@@ -10,12 +9,9 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class VerifyOtpRequest implements HasRequestId {
+public class PreviewCertRequest implements HasRequestId {
     @NotBlank(message = "requestId is required")
     private String requestId;
     @NotBlank(message = "sessionId is required")
     private String sessionId;
-    @NotBlank(message = "otp is required")
-    @Pattern(regexp = "^\\d{6}$", message = "OTP must be 6 digits")
-    private String otp;
 }
