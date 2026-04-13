@@ -18,6 +18,7 @@ import com.phelim.system.love_certificate.repository.CertificateVerifyLogReposit
 import com.phelim.system.love_certificate.repository.LoveStoryRepository;
 import com.phelim.system.love_certificate.service.domain.*;
 import com.phelim.system.love_certificate.util.LoveCertificateUtil;
+import com.phelim.system.love_certificate.util.PhoneNumberNormalizer;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,10 +60,12 @@ public class CertificateServiceImpl implements CertificateService {
     private final TrustService trustService;
     private final TimelineService timelineService;
     private final VerifyLogService verifyLogService;
+    private final PhoneNumberNormalizer phoneNumberNormalizer;
 
     private final CacheManager cacheManager;
+
     // =========================
-    // INIT
+    // METHOD
     // =========================
     @Override
     public CertificateSession init(InitRequest req) {
@@ -79,6 +82,9 @@ public class CertificateServiceImpl implements CertificateService {
             }
             return session;
         }
+        String phoneE164Format = phoneNumberNormalizer.toE164(req.getPhoneNumber(), req.getRegion()); // 0987123456 => +84987123456
+        log.debug("[CertificateServiceImpl][init] phone={} to phoneE164Format={}, region={}", req.getPhoneNumber(), phoneE164Format, req.getRegion());
+
         CertificateSession session = CertificateSession.builder()
                 .sessionId(generateSessionId())
                 .requestId(req.getRequestId())
@@ -90,6 +96,8 @@ public class CertificateServiceImpl implements CertificateService {
                 .status(CertSessionStatus.DRAFT)
                 .createdAt(LocalDateTime.now())
                 .email(req.getEmail())
+                .phoneNumber(phoneE164Format)
+                .region(req.getRegion())
                 .build();
 
         sessionRepo.save(session);
@@ -97,14 +105,14 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     @Override
-    public byte[] previewCert(GenerateRequest req) {
-        log.info("[CertificateServiceImpl][previewCert] Start. requestId={}, sessionId={}", req.getRequestId(), req.getSessionId());
+    public byte[] previewCertificate(PreviewCertRequest req) {
+        log.info("[CertificateServiceImpl][previewCertificate] Start. requestId={}, sessionId={}", req.getRequestId(), req.getSessionId());
 
         CertificateSession session = sessionRepo.findById(req.getSessionId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.SESSION_NOT_FOUND, "sessionId=" + req.getSessionId()));
 
         if (!CertSessionStatus.DRAFT.equals(session.getStatus())) {
-            log.warn("[CertificateServiceImpl][previewCert] Preview only allowed in DRAFT. requestId={}, sessionId={}", req.getRequestId(), req.getSessionId());
+            log.warn("[CertificateServiceImpl][previewCertificate] Preview only allowed in DRAFT. requestId={}, sessionId={}", req.getRequestId(), req.getSessionId());
             throw new BusinessException(ErrorCode.INVALID_STATE, "Preview only allowed in DRAFT", "sessionId=" + session.getSessionId());
         }
 
@@ -141,7 +149,7 @@ public class CertificateServiceImpl implements CertificateService {
 //        String otp = generateOtp();
         String otp = "123456";
 
-        session.setOtpCode(otp);
+//        session.getOtp(otp);
         session.setOtpExpireAt(LocalDateTime.now().plusMinutes(2));
         session.setStatus(CertSessionStatus.OTP_PENDING);
         session.setUpdatedAt(LocalDateTime.now());
@@ -164,13 +172,13 @@ public class CertificateServiceImpl implements CertificateService {
             throw new BusinessException(ErrorCode.OTP_EXPIRED, "sessionId=" + req.getSessionId());
         }
 
-        if (!session.getOtpCode().equals(req.getOtp())) {
+        if (!session.getOtp().equals(req.getOtp())) {
             session.setRetryCount(session.getRetryCount() + 1);
             sessionRepo.save(session);
             throw new BusinessException(ErrorCode.INVALID_OTP, "sessionId=" + req.getSessionId());
         }
 
-        session.setStatus(CertSessionStatus.VERIFIED);
+        session.setStatus(CertSessionStatus.OTP_VERIFIED);
         sessionRepo.save(session);
 
         // trigger async
@@ -264,7 +272,7 @@ public class CertificateServiceImpl implements CertificateService {
         if (!CertSessionStatus.COMPLETED.equals(session.getStatus())) {
 
             int retryAfter = switch (session.getStatus()) {
-                case CertSessionStatus.VERIFIED -> 1;
+                case CertSessionStatus.OTP_VERIFIED -> 1;
                 case CertSessionStatus.PROCESSING -> 2;
                 case CertSessionStatus.FAILED -> 5; // optional
                 default -> 3;

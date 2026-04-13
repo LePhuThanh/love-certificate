@@ -8,7 +8,7 @@ import com.phelim.system.love_certificate.dto.response.*;
 import com.phelim.system.love_certificate.entity.CertificateSession;
 import com.phelim.system.love_certificate.service.application.CertificateApplicationService;
 import com.phelim.system.love_certificate.service.application.CertificateService;
-import com.phelim.system.love_certificate.util.RequestIdValidator;
+import com.phelim.system.love_certificate.validation.validator.RequestIdValidator;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,10 +48,10 @@ public class CertificateController {
     }
 
     @PostMapping("/v1/preview")
-    public LoveCertificateResponse<PreviewResponse> preview(@Valid @RequestBody GenerateRequest req, HttpServletRequest httpRequest) {
+    public LoveCertificateResponse<PreviewResponse> preview(@Valid @RequestBody PreviewCertRequest req, HttpServletRequest httpRequest) {
 
         RequestIdValidator.sync(httpRequest, req);
-        byte[] pdf = certificateService.previewCert(req);
+        byte[] pdf = certificateService.previewCertificate(req);
 
         String base64 = Base64.getEncoder().encodeToString(pdf);
         return LoveCertificateResponse.success(

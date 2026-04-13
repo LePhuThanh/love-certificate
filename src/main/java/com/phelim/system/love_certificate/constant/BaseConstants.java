@@ -3,6 +3,7 @@ package com.phelim.system.love_certificate.constant;
 public final class BaseConstants {
 
     private BaseConstants() {
+        // prevent instantiation
     }
 
     public static final String REQUEST_ID_HEADER = "X-Request-Id";

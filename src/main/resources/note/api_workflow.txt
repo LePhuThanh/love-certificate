@@ -1,3 +1,4 @@
+Updated by Phelim (13/04/2026)
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 🔥 1. GENERATE FLOW
 Step    API
@@ -72,18 +73,21 @@ request: "{
             "femaleName": "Gai",
             "maleAge": 27,
             "femaleAge": 25,
-            "loveStartDate": "2021-12-30"
+            "loveStartDate": "2021-12-30",
+            "email": "iloveu@gmail.com",
+            "phoneNumber": "0336223189",
+            "region": "VN"
           }"
 
 response: "{
                "requestId": "req-002",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:07:37.343150",
+               "timestamp": "2026-04-13T17:26:50.885760300",
                "data": {
-                   "sessionId": "CS_D85650E4",
+                   "sessionId": "CS_8E95F631",
                    "status": "DRAFT",
-                   "createdAt": "2026-04-08T14:07:37.314165200"
+                   "createdAt": "2026-04-13T17:26:50.847977600"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -91,36 +95,37 @@ response: "{
 
 request: "{
             "requestId": "req-preview-001",
-            "sessionId": "CS_D85650E4"
+            "sessionId": "CS_8E95F631"
           }"
 response: "{
                "requestId": "req-preview-001",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:07:45.259767",
+               "timestamp": "2026-04-13T17:27:06.971128",
                "data": {
-                   "sessionId": "CS_D85650E4",
-                   "fileBase64": "JVBERi0xLjQKJfbk/N8KMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovVmVyc2lvbiAvMS43Ci9QYWdlcyAyIDAgUgo+PgplbmRvYmoKMyAwIG9iago8PAovQ3GFyZW50IDIgMCBSCi9Db250ZW50cyA4IDAgUgovUmVzb3V...
+                   "sessionId": "CS_8E95F631",
+                   "fileName": "Preview_Certificate.pdf",
+                   "fileBase64": "JVBERi0xLjQKJfbk/N8KMSAwIG9iago8PAovVHlwZSAvQ2F0YWxvZwovVmVyc2lvbiAvMS43Ci9QYWdlcyAyIDAgUgo+PgplbmRvYmoKMyAwIG9iago8PAovQ3JlYXRpb25EYXRlIChEOjIwMjYwNDEzMTcyNzA2KzA3JzAwJykKL1Byb2R1Y2VyIChv"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 (#3) POST: http://localhost:8080/core/love-certificates/v1/sessions/upsert-story
 
 request: "{
-           "requestId": "req-003",
-           "sessionId": "CS_D85650E4",
-           "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖"
-         }"
+            "requestId": "req-003",
+            "sessionId": "CS_8E95F631",
+            "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖"
+          }"
 response: "{
                "requestId": "req-003",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:07:50.026229400",
+               "timestamp": "2026-04-13T17:27:10.689429400",
                "data": {
-                   "sessionId": "CS_D85650E4",
+                   "sessionId": "CS_8E95F631",
                    "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
                    "version": 1,
-                   "updatedAt": "2026-04-08T14:07:50.0262294"
+                   "updatedAt": "2026-04-13T17:27:10.6858348"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -128,15 +133,17 @@ response: "{
 
 request: "{
             "requestId": "req-preview-001",
-            "sessionId": "CS_D85650E4"
+            "sessionId": "CS_8E95F631",
+            "phoneNumber": "0336223189",
+            "region": "VN"
           }"
 response: "{
                "requestId": "req-preview-001",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:08:08.925477200",
+               "timestamp": "2026-04-13T17:27:14.868348200",
                "data": {
-                   "sessionId": "CS_D85650E4",
+                   "sessionId": "CS_8E95F631",
                    "otpExpireIn": 120,
                    "status": "OTP_SENT"
                }
@@ -146,35 +153,35 @@ response: "{
 
 request: "{
             "requestId": "req-verify-001",
-            "sessionId": "CS_D85650E4",
+            "sessionId": "CS_8E95F631",
             "otp": "123456"
           }"
 response: "{
                "requestId": "req-verify-001",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:08:16.098083400",
+               "timestamp": "2026-04-13T17:27:19.972086100",
                "data": {
-                   "sessionId": "CS_D85650E4",
+                   "sessionId": "CS_8E95F631",
                    "status": "VERIFIED"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#6) GET: http://localhost:8080/core/love-certificates/v1/status/CS_D85650E4
+(#6) GET: http://localhost:8080/core/love-certificates/v1/status/CS_8E95F631
 response: "{
-               "requestId": "2191724f-7f1f-4b84-8745-6fcb1e0a02eb",
+               "requestId": "7982213b-9202-4497-b164-5f713f0cf632",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:08:49.623979400",
+               "timestamp": "2026-04-13T17:27:26.763918800",
                "data": {
-                   "certId": "CERT_BA091E05",
-                   "sessionId": "CS_D85650E4",
+                   "certId": "CERT_A4891D5C",
+                   "sessionId": "CS_8E95F631",
                    "status": "COMPLETED",
-                   "fileUrl": "files/CERT_BA091E05.pdf"
+                   "fileUrl": "files/CERT_A4891D5C.pdf"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#7) GET: /core/love-certificates/v1/certificates/CERT_BA091E05/download
+(#7) GET: /core/love-certificates/v1/certificates/CERT_A4891D5C/download
 request:
     Next step: Headers
     Tab Headers:
@@ -184,15 +191,15 @@ request:
 response: PDF file
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#8) GET: http://localhost:8080/core/love-certificates/v1/public/cert/CERT_BA091E05
+(#8) GET: http://localhost:8080/core/love-certificates/v1/public/cert/CERT_A4891D5C
 
 response: "{
-               "requestId": "d3f9b521-63d0-4991-be04-7f2e72d3239b",
+               "requestId": "a874ac74-957d-4c2c-b324-7d580552f45b",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:08:58.190943700",
+               "timestamp": "2026-04-13T17:27:39.101949700",
                "data": {
-                   "certId": "CERT_BA091E05",
+                   "certId": "CERT_A4891D5C",
                    "valid": true,
                    "status": "VALID",
                    "loveStory": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
@@ -201,17 +208,17 @@ response: "{
                    "revoked": false,
                    "storyHistory": [
                        {
-                           "sessionId": "CS_D85650E4",
+                           "sessionId": "CS_8E95F631",
                            "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
                            "version": 1,
-                           "updatedAt": "2026-04-08T14:07:50.026229"
+                           "updatedAt": "2026-04-13T17:27:10.685835"
                        }
                    ],
                    "timeline": {
-                       "certId": "CERT_BA091E05",
+                       "certId": "CERT_A4891D5C",
                        "loveStartDate": "2021-12-30",
-                       "today": "2026-04-08",
-                       "totalDays": 1560,
+                       "today": "2026-04-13",
+                       "totalDays": 1565,
                        "pastMilestones": [
                            {
                                "label": "1 Year Anniversary 🥂",
@@ -220,7 +227,7 @@ response: "{
                                "passed": true,
                                "current": false,
                                "progressPercent": 0,
-                               "relativeText": "1195 days ago 💭",
+                               "relativeText": "1200 days ago 💭",
                                "today": false
                            },
                            {
@@ -230,7 +237,7 @@ response: "{
                                "passed": true,
                                "current": false,
                                "progressPercent": 0,
-                               "relativeText": "1460 days ago 💭",
+                               "relativeText": "1465 days ago 💭",
                                "today": false
                            },
                            {
@@ -240,7 +247,7 @@ response: "{
                                "passed": true,
                                "current": false,
                                "progressPercent": 0,
-                               "relativeText": "1530 days ago 💭",
+                               "relativeText": "1535 days ago 💭",
                                "today": false
                            },
                            {
@@ -250,7 +257,7 @@ response: "{
                                "passed": true,
                                "current": false,
                                "progressPercent": 0,
-                               "relativeText": "1560 days ago 💭",
+                               "relativeText": "1565 days ago 💭",
                                "today": false
                            }
                        ],
@@ -261,8 +268,8 @@ response: "{
                                "days": 730,
                                "passed": true,
                                "current": true,
-                               "progressPercent": 75,
-                               "relativeText": "830 days ago 💭",
+                               "progressPercent": 76,
+                               "relativeText": "835 days ago 💭",
                                "today": false
                            }
                        ],
@@ -274,7 +281,7 @@ response: "{
                                "passed": false,
                                "current": false,
                                "progressPercent": 0,
-                               "relativeText": "In 265 days 🎯",
+                               "relativeText": "In 260 days 🎯",
                                "today": false
                            },
                            {
@@ -284,7 +291,7 @@ response: "{
                                "passed": false,
                                "current": false,
                                "progressPercent": 0,
-                               "relativeText": "In 2090 days 🎯",
+                               "relativeText": "In 2085 days 🎯",
                                "today": false
                            }
                        ]
@@ -292,65 +299,65 @@ response: "{
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#9) GET: http://localhost:8080/core/love-certificates/v1/verify-pdf/hash/CERT_BA091E05
+(#9) GET: http://localhost:8080/core/love-certificates/v1/verify-pdf/hash/CERT_A4891D5C
 
 response: "{
-               "requestId": "0004af57-00e6-42d3-9245-e5d4ed6b9143",
+               "requestId": "7725c839-e7af-4110-844d-8f2d978e6694",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:09:11.825821400",
+               "timestamp": "2026-04-13T17:27:42.156252200",
                "data": {
-                   "certId": "CERT_BA091E05",
+                   "certId": "CERT_A4891D5C",
                    "method": "HASH",
                    "status": "VALID",
                    "valid": true,
-                   "expectedHash": "1979d812c0d84525e362e5e08b790d892224a25effe91d09051510468bdd5466",
-                   "actualHash": "1979d812c0d84525e362e5e08b790d892224a25effe91d09051510468bdd5466",
-                   "verifiedAt": "2026-04-08T14:09:11.8258214"
+                   "expectedHash": "0554ed8ce13dc2594d77d2bcffb9d30e5a636ec46a4988e9913e9584b8797734",
+                   "actualHash": "0554ed8ce13dc2594d77d2bcffb9d30e5a636ec46a4988e9913e9584b8797734",
+                   "verifiedAt": "2026-04-13T17:27:42.1562522"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#10) GET : http://localhost:8080/core/love-certificates/v1/verify-pdf/signature/CERT_BA091E05
+(#10) GET : http://localhost:8080/core/love-certificates/v1/verify-pdf/signature/CERT_A4891D5C
 
 response: "{
-               "requestId": "1915d038-b383-41a6-9a90-822b25df6f2d",
+               "requestId": "374a792b-934e-4f3b-8c10-ae863e1b05db",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:09:16.426827300",
+               "timestamp": "2026-04-13T17:27:46.188233200",
                "data": {
-                   "certId": "CERT_BA091E05",
+                   "certId": "CERT_A4891D5C",
                    "method": "RSA",
                    "status": "VALID",
                    "valid": true,
-                   "signature": "JtXvrueF7RB3krSmhp+LE1MquRBircaev08KBW59j2EtBT0XSL9SZ6le5qicPI97N9hjUIOipaeGiphpmmRdsJQl3fzfHka3Jrft5/70ZvRJvcZ0M6Y2sM/Eq2l/y76ttph5CyO4W+azCEJ2kUiy3/nFNm1fuW97IC54iLNK1haHnK8gJ6/N7ykXKyHefZBEpzNrY+Mf9t4zaevLpDw+NHdBJz8qtsYwF0MVdU6wSKxJOGK9X3BsrTy48dibz9rYuQj1lJHWuflhWOpoTSj0aAb6g5ftnIoMEAVKbGrXRz0ND7+4myy4EONk1dLt3qbqsNkx8FtXzCc0CfCnkESesA==",
-                   "verifiedAt": "2026-04-08T14:09:16.4268273"
+                   "signature": "VedXJX3vb1yaOy6Maj1qJRKsOVKCj1Rz+cCmbnp3Aq64CevDl9ck4aHIhyAaVzfOSdHdzRMN6P+3j8+De4lCSc2r1wiL34tfhIpJU2GPYV99WqJEXBrXDYS6tHumgIg3JXIfJfHxPzw68GD3yi5ptyMdewYJkHiwYD8/iYUIL9vAlmjWReDKVnTs6ohrHopV4Ox2vUQ/lDoej6LyfRs6cc1chAy4R2VslPOjFYzXtac9szHMgnb+7NNMKca4KQsNDUHtM96Rs0qKIOcA+jj/xUwIgzH7tjQk9637EB2mFofCmJX47YCT650e37wNQff6Du1vrR8FaMUzjOs2Uy1fBg==",
+                   "verifiedAt": "2026-04-13T17:27:46.1882332"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#11) GET: http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/verify-summary
+(#11) GET: http://localhost:8080/core/love-certificates/v1/CERT_A4891D5C/verify-summary
 
 response: "{
-               "requestId": "548fb9c2-874a-4bae-a083-62a64e9f32bd",
+               "requestId": "c0d67779-503a-42e2-89b9-47cea9915322",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:10:07.229883600",
+               "timestamp": "2026-04-13T17:27:50.210080300",
                "data": {
-                   "certId": "CERT_BA091E05",
+                   "certId": "CERT_A4891D5C",
                    "total": 2,
-                   "lastVerifiedAt": "2026-04-08T14:09:16.426452",
+                   "lastVerifiedAt": "2026-04-13T17:27:46.186184",
                    "status": "VALID"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#12) GET: http://localhost:8080/core/love-certificates/v1/admin/CERT_BA091E05/verify-history
+(#12) GET: http://localhost:8080/core/love-certificates/v1/admin/CERT_A4891D5C/verify-history
 
 response: "{
-               "requestId": "28980388-55d7-4e07-bb92-6f1616e71536",
+               "requestId": "1c0d1321-6521-47e0-8736-c169f2bfd88f",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:10:20.687289300",
+               "timestamp": "2026-04-13T17:27:53.703116100",
                "data": {
-                   "certId": "CERT_BA091E05",
+                   "certId": "CERT_A4891D5C",
                    "total": 2,
                    "logs": [
                        {
@@ -358,14 +365,14 @@ response: "{
                            "result": "VALID",
                            "ip": "127.0.0.1",
                            "userAgent": "PostmanRuntime/7.53.0",
-                           "verifiedAt": "2026-04-08T14:09:16.426452"
+                           "verifiedAt": "2026-04-13T17:27:46.186184"
                        },
                        {
                            "method": "HASH",
                            "result": "VALID",
                            "ip": "127.0.0.1",
                            "userAgent": "PostmanRuntime/7.53.0",
-                           "verifiedAt": "2026-04-08T14:09:11.823231"
+                           "verifiedAt": "2026-04-13T17:27:42.142841"
                        }
                    ]
                }
@@ -375,58 +382,52 @@ response: "{
 
 request: "{
             "requestId": "req-005",
-            "certId": "CERT_BA091E05",
+            "certId": "CERT_A4891D5C",
             "reason": "I like it!"
           }"
 response: "{
                "requestId": "req-005",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:10:39.961329500",
+               "timestamp": "2026-04-13T17:27:58.673317900",
                "data": {
                    "requestId": "req-005",
-                   "certId": "CERT_BA091E05",
+                   "certId": "CERT_A4891D5C",
                    "status": "REVOKED",
-                   "revokedAt": "2026-04-08T14:10:39.9613295",
+                   "revokedAt": "2026-04-13T17:27:58.6707758",
                    "message": "Certificate revoked successfully"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-GET: http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/trust-score
+GET: http://localhost:8080/core/love-certificates/v1/CERT_A4891D5C/trust-score
 
 response: "{
-               "requestId": "79f17963-0186-4d5f-95cd-a7587d5b26ed",
+               "requestId": "237603af-8672-4cb9-b062-2f0b05fa7b8e",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:09:20.785158100",
+               "timestamp": "2026-04-13T17:28:05.803254500",
                "data": {
-                   "certId": "CERT_BA091E05",
-                   "score": 60,
-                   "level": "MEDIUM_TRUST",
-                   "revoked": false,
+                   "certId": "CERT_A4891D5C",
+                   "score": 0,
+                   "level": "LOW_TRUST",
+                   "revoked": true,
                    "totalVerify": 2,
-                   "uniqueUsers": 1,
-                   "lastVerifiedAt": "2026-04-08T14:09:16.426452",
-                   "fraud": {
-                       "bot": false,
-                       "spam": false,
-                       "suspicious": false
-                   }
+                   "uniqueUsers": 0
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-GET: http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/timeline
+GET: http://localhost:8080/core/love-certificates/v1/CERT_A4891D5C/timeline
 
 response: "{
-               "requestId": "2e86bbb5-278f-4bf6-900f-8d284d28ace5",
+               "requestId": "d8f322b2-b67a-445f-a9f2-0bf6668223d3",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:09:25.740874200",
+               "timestamp": "2026-04-13T17:28:09.435573100",
                "data": {
-                   "certId": "CERT_BA091E05",
+                   "certId": "CERT_A4891D5C",
                    "loveStartDate": "2021-12-30",
-                   "today": "2026-04-08",
-                   "totalDays": 1560,
+                   "today": "2026-04-13",
+                   "totalDays": 1565,
                    "pastMilestones": [
                        {
                            "label": "1 Year Anniversary 🥂",
@@ -435,7 +436,7 @@ response: "{
                            "passed": true,
                            "current": false,
                            "progressPercent": 0,
-                           "relativeText": "1195 days ago 💭",
+                           "relativeText": "1200 days ago 💭",
                            "today": false
                        },
                        {
@@ -445,7 +446,7 @@ response: "{
                            "passed": true,
                            "current": false,
                            "progressPercent": 0,
-                           "relativeText": "1460 days ago 💭",
+                           "relativeText": "1465 days ago 💭",
                            "today": false
                        },
                        {
@@ -455,7 +456,7 @@ response: "{
                            "passed": true,
                            "current": false,
                            "progressPercent": 0,
-                           "relativeText": "1530 days ago 💭",
+                           "relativeText": "1535 days ago 💭",
                            "today": false
                        },
                        {
@@ -465,7 +466,7 @@ response: "{
                            "passed": true,
                            "current": false,
                            "progressPercent": 0,
-                           "relativeText": "1560 days ago 💭",
+                           "relativeText": "1565 days ago 💭",
                            "today": false
                        }
                    ],
@@ -476,8 +477,8 @@ response: "{
                            "days": 730,
                            "passed": true,
                            "current": true,
-                           "progressPercent": 75,
-                           "relativeText": "830 days ago 💭",
+                           "progressPercent": 76,
+                           "relativeText": "835 days ago 💭",
                            "today": false
                        }
                    ],
@@ -489,7 +490,7 @@ response: "{
                            "passed": false,
                            "current": false,
                            "progressPercent": 0,
-                           "relativeText": "In 265 days 🎯",
+                           "relativeText": "In 260 days 🎯",
                            "today": false
                        },
                        {
@@ -499,7 +500,7 @@ response: "{
                            "passed": false,
                            "current": false,
                            "progressPercent": 0,
-                           "relativeText": "In 2090 days 🎯",
+                           "relativeText": "In 2085 days 🎯",
                            "today": false
                        }
                    ]
@@ -507,34 +508,35 @@ response: "{
            }"
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#14) GET: http://localhost:8080/core/love-certificates/v1/CS_D85650E4/story
+(#14) GET: http://localhost:8080/core/love-certificates/v1/CS_8E95F631/story
 
 response: "{
-               "requestId": "720addc6-646c-4d5e-89f1-18085f53983b",
+               "requestId": "948494a3-de49-442a-80fc-9644442f7229",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:11:01.720235700",
+               "timestamp": "2026-04-13T17:28:17.852981700",
                "data": {
-                   "sessionId": "CS_D85650E4",
+                   "sessionId": "CS_8E95F631",
                    "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
                    "version": 1,
-                   "updatedAt": "2026-04-08T14:07:50.026229"
+                   "updatedAt": "2026-04-13T17:27:10.685835"
                }
            }"
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-(#15) GET: http://localhost:8080/core/love-certificates/v1/sessions/CS_D85650E4/story/history
+(#15) GET: http://localhost:8080/core/love-certificates/v1/sessions/CS_8E95F631/story/history
 
 response: "{
-               "requestId": "7deff4fc-cb9c-45b0-a100-c659c5e65492",
+               "requestId": "d370814a-12b8-49ed-965e-8cb784cf7364",
                "code": "00",
                "message": "SUCCESS",
-               "timestamp": "2026-04-08T14:11:07.771522400",
+               "timestamp": "2026-04-13T17:28:21.724430400",
                "data": [
                    {
-                       "sessionId": "CS_D85650E4",
+                       "sessionId": "CS_8E95F631",
                        "content": "We met in 2020 at university, and since then our journey has been full of love and growth 💖",
                        "version": 1,
-                       "updatedAt": "2026-04-08T14:07:50.026229"
+                       "updatedAt": "2026-04-13T17:27:10.685835"
                    }
                ]
            }"
+ 

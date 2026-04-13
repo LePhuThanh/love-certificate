@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface CertificateService {
     CertificateSession init(InitRequest req);
-    byte[] previewCert(GenerateRequest req);
+    byte[] previewCertificate(PreviewCertRequest req);
     void sendOtp(GenerateRequest req);
     void verifyOtp(VerifyOtpRequest req);
     CertificateStatusResponse getCertificateStatus(String sessionId);
