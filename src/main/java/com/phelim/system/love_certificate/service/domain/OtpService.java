@@ -26,18 +26,18 @@ public class OtpService {
     @Value("${sms.environment}")
     private String environment;
 
-    public void sendOtp(String phoneNumber, String otpCode, String partnerName) {
-        log.info("[OtpService][sendOtp] Sending OTP to phone: {}, OTP: {}", phoneNumber, otpCode);
+    public void sendOtp(String phoneNumber, String otp) {
+        log.info("[OtpService][sendOtp] Sending OTP to phone: {}, OTP: {}", phoneNumber, otp);
 
         // Build message
-        String message = "Quy khach vui long nhap " + otpCode + " de xac nhan lien ket. Hotline 19006679.";
-        log.info("[OtpService][sendOtp] Generated OTP={}, phoneNumber={}", otpCode, phoneNumber);
+        String message = "Quy khach vui long nhap " + otp + " de xac nhan lien ket. Hotline 19006679.";
+        log.info("[OtpService][sendOtp] Generated OTP={}, phoneNumber={}", otp, phoneNumber);
 
         // Send SMS
         if (BaseConstants.TEST_ENVIRONMENT.equalsIgnoreCase(environment)){
             log.info("[OtpService][sendOtp] TEST environment - Skip sending SMS");
         } else {
-            clientService.sendOtp(phoneNumber, partnerName, message);
+            clientService.sendOtp(phoneNumber, message);
         }
 
         log.info("[OtpService][sendOtp] Otp sent successfully to: {}", phoneNumber);

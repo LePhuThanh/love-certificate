@@ -20,8 +20,8 @@ public class ClientService {
     // =========================
     // SMS CLIENT
     // =========================
-    public void sendOtp(String phoneNumber, String partnerName, String message){
-        log.info("[ClientService][sendOtp] Start calling SMS CLIENT. phoneNumber={}, partnerName={}", phoneNumber, partnerName);
+    public void sendOtp(String phoneNumber, String message){
+        log.info("[ClientService][sendOtp] Start calling SMS CLIENT. phoneNumber={}", phoneNumber);
 
         SmsRequest request = SmsRequest.builder()
                 .phoneNumber(phoneNumber)
@@ -31,59 +31,57 @@ public class ClientService {
             LoveCertificateResponse<Boolean> response = smsClient.sendOtp(request);
 
             if (response == null) {
-                log.warn("[ClientService][sendOtp] Null response from SMS CLIENT. phoneNumber={}, phoneNumber={}", phoneNumber, partnerName);
-                throw new BusinessException(ErrorCode.FEIGN_CLIENT_INVALID_RESPONSE,
-                        String.format("phoneNumber = %s, partnerName = %s", phoneNumber, partnerName));
+                log.warn("[ClientService][sendOtp] Null response from SMS CLIENT. phoneNumber={}", phoneNumber);
+                throw new BusinessException(ErrorCode.FEIGN_CLIENT_INVALID_RESPONSE, "phoneNumber=", phoneNumber);
             }
 
             final String code = response.getCode();
 
             if (BaseConstants.CLIENT_NOT_OK.equals(code)) {
-                log.warn("[ClientService][sendOtp] Not supported. phoneNumber={}, partnerName={}", phoneNumber, partnerName);
-                throw new BusinessException(ErrorCode.FEIGN_CLIENT_DETAIL_MESSAGE_ERROR_FOR_NOT_OK, "Error from SMS CLIENT",
-                        String.format("phoneNumber = %s, partnerName = %s", phoneNumber, partnerName));
+                log.warn("[ClientService][sendOtp] Not supported. phoneNumber={}", phoneNumber);
+                throw new BusinessException(ErrorCode.FEIGN_CLIENT_DETAIL_MESSAGE_ERROR_FOR_NOT_OK, "Error from SMS CLIENT", "phoneNumber=" + phoneNumber);
             }
 
             if (!BaseConstants.CLIENT_OK.equals(code)) {
-                log.error("[ClientService][sendOtp] SMS CLIENT business error. phoneNumber={}, partnerName={}, code={}, message={}",
-                        phoneNumber, partnerName, code, response.getMessage());
+                log.error("[ClientService][sendOtp] SMS CLIENT business error. phoneNumber={}, code={}, message={}",
+                        phoneNumber, code, response.getMessage());
                 throw new BusinessException(ErrorCode.FEIGN_CLIENT_BUSINESS_ERROR,
-                        String.format("phoneNumber = %s, partnerName = %s, code = %s, message = %s", phoneNumber, partnerName, response.getCode(), response.getMessage()));
+                        String.format("phoneNumber=%s, code=%s, message=%s", phoneNumber, response.getCode(), response.getMessage()));
             }
 
             final Boolean sentSuccess = response.getData();
             if (!Boolean.TRUE.equals(sentSuccess)) {
-                log.error("[ClientService][sendOtp] OTP sending failed. phoneNumber={}, partnerName={}, code={}, message={}",
-                        phoneNumber, partnerName, response.getCode(), response.getMessage());
+                log.error("[ClientService][sendOtp] OTP sending failed. phoneNumber={}, code={}, message={}",
+                        phoneNumber, response.getCode(), response.getMessage());
                 throw new BusinessException(ErrorCode.OTP_SEND_FAILED,
-                        String.format("phoneNumber = %s, partnerName = %s, code = %s, message = %s", phoneNumber, partnerName, response.getCode(), response.getMessage()));
+                        String.format("phoneNumber=%s, code=%s, message=%s", phoneNumber, response.getCode(), response.getMessage()));
             }
 
             //Success
-            log.info("[ClientService][sendOtp] Calling SMS CLIENT success. phoneNumber={}, partnerName={}", phoneNumber, partnerName);
+            log.info("[ClientService][sendOtp] Calling SMS CLIENT success. phoneNumber={}", phoneNumber);
 
         } catch (BusinessException ex) {
             throw ex;
         } catch (feign.RetryableException ex) {
             log.error("[ClientService][sendOtp] Timeout calling SMS CLIENT.", ex);
-            throw new BusinessException(ErrorCode.TIMEOUT_ERROR, "Exception = " + ex);
+            throw new BusinessException(ErrorCode.TIMEOUT_ERROR, "Exception=" + ex);
         } catch (feign.FeignException ex) {
             log.error("[ClientService][sendOtp] SMS CLIENT error. status={}, message={}",
                     ex.status(), ex.getMessage(), ex);
             throw mapFeignException(ex);
         } catch (Exception ex) {
             log.error("[ClientService][sendOtp] Unexpected error", ex);
-            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Exception = " + ex);
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Exception=" + ex);
         }
     }
 
     public BusinessException mapFeignException(feign.FeignException ex) {
         return switch (ex.status()) {
-            case 400 -> new BusinessException(ErrorCode.FEIGN_CLIENT_INVALID_RESPONSE, "Exception = " + ex);
-            case 404 -> new BusinessException(ErrorCode.FEIGN_CLIENT_NOT_FOUND, "Exception = " + ex);
-            case 408, 504 -> new BusinessException(ErrorCode.TIMEOUT_ERROR, "Exception = " + ex);
+            case 400 -> new BusinessException(ErrorCode.FEIGN_CLIENT_INVALID_RESPONSE, "Exception=" + ex);
+            case 404 -> new BusinessException(ErrorCode.FEIGN_CLIENT_NOT_FOUND, "Exception=" + ex);
+            case 408, 504 -> new BusinessException(ErrorCode.TIMEOUT_ERROR, "Exception=" + ex);
             case 500, 502, 503 -> new BusinessException(ErrorCode.DOWNSTREAM_SERVICE_UNAVAILABLE, "Exception=" + ex);
-            default -> new BusinessException(ErrorCode.FEIGN_CLIENT_UNAVAILABLE, "Exception = " + ex);
+            default -> new BusinessException(ErrorCode.FEIGN_CLIENT_UNAVAILABLE, "Exception=" + ex);
         };
     }
 }
