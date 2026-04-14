@@ -51,7 +51,7 @@ public class CertificateSession {
     private LocalDate loveStartDate;
 
     @Column(name = "status")
-    private String status; // DRAFT, OTP_PENDING, VERIFIED, PROCESSING, COMPLETED, OTP_FAILED, FAILED
+    private CertSessionStatus status; // DRAFT, OTP_PENDING, VERIFIED, PROCESSING, COMPLETED, OTP_FAILED, FAILED
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -68,14 +68,12 @@ public class CertificateSession {
 //    private String otpSalt;
     @Column(name = "otp_expire_at")
     private LocalDateTime otpExpireAt;
+
     @Column(name = "retry_count")
     @Builder.Default
     private int retryCount = 0;
 
-    //    @Pattern(
-//            regexp = "^[A-Za-z0-9+_.-]+@(.+)$",
-//            message = "Invalid email format"
-//    )
+    //    @Pattern(regexp = "^[A-Za-z0-9+_.-]+@(.+)$", message = "Invalid email format")
     @NotBlank(message = "email is required")
     @Email
     @Column(name = "email")

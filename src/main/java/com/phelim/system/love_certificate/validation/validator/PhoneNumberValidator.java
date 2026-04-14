@@ -8,10 +8,13 @@ import com.phelim.system.love_certificate.validation.annotation.PhoneNumber;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
+import java.util.Arrays;
+
 public class PhoneNumberValidator implements ConstraintValidator<PhoneNumber, String> {
 
     private boolean allowInternational;
     private String region;
+    private String[] allowedRegions;
 
     private final PhoneNumberUtil phoneUtil = PhoneNumberUtil.getInstance();
 
@@ -19,9 +22,10 @@ public class PhoneNumberValidator implements ConstraintValidator<PhoneNumber, St
     public void initialize(PhoneNumber constraintAnnotation) {
         this.allowInternational = constraintAnnotation.allowInternational();
         this.region = constraintAnnotation.region();
+        this.allowedRegions = constraintAnnotation.allowedRegions();
     }
 
-    /**
+    /** Cmt by Phelim (14/04/2026) ex: for VN-format
      * libphonenumber can handle:
      + "0987 123 456" => valid
      +  "+84 987123456" => valid
@@ -38,20 +42,51 @@ public class PhoneNumberValidator implements ConstraintValidator<PhoneNumber, St
         }
 
         try {
+            /**
+             * "0987..." => requires knowing it's Vietnam
+             * "+84987..." => region not required
+             */
+            // Parse with region fallback
             Phonenumber.PhoneNumber number = phoneUtil.parse(value, region);
 
-            boolean isValid = phoneUtil.isValidNumber(number);
-            if (!allowInternational) {
-                boolean isVN = region.equalsIgnoreCase(phoneUtil.getRegionCodeForNumber(number));
-                isValid = isValid && isVN;
-            }
-
-            if (!isValid) {
+            /**
+             * Check:
+             * Length
+             * Valid prefix
+             * Existing country
+             */
+            // Check valid globally
+            if (!phoneUtil.isValidNumber(number)) {
                 buildMessage(context);
                 return false;
             }
 
+            // Get the actual region of the phoneNumber
+            String actualRegion = phoneUtil.getRegionCodeForNumber(number);
+
+            // If there is allowedRegions => prioritize checking
+            // (@PhoneNumber(allowedRegions = {"VN", "US"}) > @PhoneNumber(allowInternational = true))
+            if (allowedRegions != null && allowedRegions.length > 0) {
+                boolean match = Arrays.stream(allowedRegions)
+                        .anyMatch(r -> r.equalsIgnoreCase(actualRegion));
+
+                if (!match) {
+                    buildMessage(context);
+                    return false;
+                }
+                return true;
+            }
+
+            // If there isn't allowedRegions => must match region (default)
+            if (!allowInternational) {
+                if (!actualRegion.equalsIgnoreCase(region)) {
+                    buildMessage(context);
+                    return false;
+                }
+            }
+
             return true;
+
         } catch (NumberParseException e) {
             buildMessage(context);
             return false;
