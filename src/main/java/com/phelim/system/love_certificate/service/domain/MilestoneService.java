@@ -1,9 +1,9 @@
 package com.phelim.system.love_certificate.service.domain;
 
 import com.phelim.system.love_certificate.constant.BaseConstants;
-import com.phelim.system.love_certificate.constant.CertSessionStatus;
 import com.phelim.system.love_certificate.entity.CertificateSession;
 import com.phelim.system.love_certificate.entity.MilestoneLog;
+import com.phelim.system.love_certificate.enums.CertSessionStatus;
 import com.phelim.system.love_certificate.model.Milestone;
 import com.phelim.system.love_certificate.constant.TimelineConstant;
 import com.phelim.system.love_certificate.repository.CertificateSessionRepository;

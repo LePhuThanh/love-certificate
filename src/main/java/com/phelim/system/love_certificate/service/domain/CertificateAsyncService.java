@@ -1,9 +1,9 @@
 package com.phelim.system.love_certificate.service.domain;
 
 import com.phelim.system.love_certificate.constant.BaseConstants;
-import com.phelim.system.love_certificate.constant.CertSessionStatus;
 import com.phelim.system.love_certificate.entity.Certificate;
 import com.phelim.system.love_certificate.entity.CertificateSession;
+import com.phelim.system.love_certificate.enums.CertSessionStatus;
 import com.phelim.system.love_certificate.enums.CertificateType;
 import com.phelim.system.love_certificate.exception.BusinessException;
 import com.phelim.system.love_certificate.exception.ErrorCode;
@@ -67,12 +67,12 @@ public class CertificateAsyncService {
 
         // Idempotent
         if (CertSessionStatus.COMPLETED.equals(session.getStatus())) {
-            log.info("[generateAsync] already completed sessionId={}", sessionId);
+            log.info("[CertificateAsyncService][generateAsync] Already completed sessionId={}", sessionId);
             return;
         }
 
         if (CertSessionStatus.PROCESSING.equals(session.getStatus())) {
-            log.warn("[generateAsync] already processing sessionId={}", sessionId);
+            log.warn("[CertificateAsyncService][generateAsync] Already processing sessionId={}", sessionId);
             return;
         }
 
@@ -122,7 +122,7 @@ public class CertificateAsyncService {
             session.setStatus(CertSessionStatus.COMPLETED);
 
         } catch (Exception ex) {
-            log.error("[CertificateAsyncService][generateAsync] failed sessionId={}", sessionId, ex);
+            log.error("[CertificateAsyncService][generateAsync] Failed sessionId={}", sessionId, ex);
             session.setStatus(CertSessionStatus.FAILED);
         }
         sessionRepo.save(session);

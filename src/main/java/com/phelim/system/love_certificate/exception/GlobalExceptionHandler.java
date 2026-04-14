@@ -54,7 +54,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Validation Exception
+     * Validation Exception @PhoneNumber + @Identification => its error handle here
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(
@@ -133,7 +133,7 @@ public class GlobalExceptionHandler {
 
             // 400
             case VALIDATION_ERROR,
-                    INVALID_REQUEST -> HttpStatus.BAD_REQUEST;
+                 INVALID_REQUEST -> HttpStatus.BAD_REQUEST;
 
             // 404
             case SESSION_NOT_FOUND -> HttpStatus.NOT_FOUND;

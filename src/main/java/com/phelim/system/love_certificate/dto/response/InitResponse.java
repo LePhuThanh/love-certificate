@@ -1,5 +1,6 @@
 package com.phelim.system.love_certificate.dto.response;
 
+import com.phelim.system.love_certificate.enums.CertSessionStatus;
 import lombok.*;
 
 @Getter
@@ -10,6 +11,6 @@ import lombok.*;
 public class InitResponse {
 
     private String sessionId;
-    private String status;
+    private CertSessionStatus status;
     private String createdAt;
 }

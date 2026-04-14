@@ -6,6 +6,20 @@ import jakarta.validation.Payload;
 
 import java.lang.annotation.*;
 
+/** Cmt by Phelim (14/04/2026)
+ * How to use
+ *  Case 1: VN only
+ * @PhoneNumber
+
+ *  Case 2: US only
+ * @PhoneNumber(region = "US")
+
+ *  Case 3: Global permission
+ * @PhoneNumber(allowInternational = true)
+
+ *  Case 4: Whitelist
+ * @PhoneNumber(allowedRegions = {"VN", "US"})
+ */
 // Custom annotation
 @Documented
 @Constraint(validatedBy = PhoneNumberValidator.class)
@@ -15,9 +29,23 @@ public @interface PhoneNumber {
 
     String message() default "Invalid phone number format";
 
-    String region() default "VN"; // default is Vietnam
+    /**
+     * Region used for parsing fallback
+     * Example: "VN", "US", "KR"
+     */
+    String region() default "VN";
 
-    boolean allowInternational() default false; // Config custom
+    /**
+     * Allow international phone numbers or not
+     * true -> accept all countries
+     * false -> only accept the correct region
+     */
+    boolean allowInternational() default false;
+
+    /**
+     * List of permitted regions (regions are prioritized)
+     */
+    String[] allowedRegions() default {};
 
     Class<?>[] groups() default {};
 
