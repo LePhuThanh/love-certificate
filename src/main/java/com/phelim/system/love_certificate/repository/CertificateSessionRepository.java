@@ -1,6 +1,7 @@
 package com.phelim.system.love_certificate.repository;
 
 import com.phelim.system.love_certificate.entity.CertificateSession;
+import com.phelim.system.love_certificate.enums.CertSessionStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -12,7 +13,7 @@ import java.util.Optional;
 
 public interface CertificateSessionRepository extends JpaRepository<CertificateSession, String> {
     Optional<CertificateSession> findByRequestId(String requestId);
-    List<CertificateSession> findByStatus(String status);
+    List<CertificateSession> findByStatus(CertSessionStatus status);
 
     @Query(value = """
         SELECT cs.*

@@ -53,6 +53,7 @@ public enum ErrorCode {
 
     MAX_RETRY_EXCEEDED("FC110","Exceeded the number of OTP retry."),
 
+    IDENTIFICATION_INVALID_FORMAT("FC110", "Identification invalid format"),
     PHONE_MISMATCH("FC110", "Phone number mismatch the core session phone number");
 
     private final String code;

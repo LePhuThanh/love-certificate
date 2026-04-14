@@ -1,20 +1,21 @@
+Updated by Phelim (14/04/2026)
 
-#TEST Mock key
-Bước 1 — chạy RsaKeyGenerator
-private_key.pem
-public_key.pem
-Bước 2 — copy key vào project
-Bước 3 — chạy app Spring Boot
+#TEST (Mock Key)
+Step 1 — Run RsaKeyGenerator
+    private_key.pem
+    public_key.pem
+Step 2 — Copy the key into your project
+Step 3 — Run your Spring Boot app
 
-* Cực kỳ quan trọng
+* Extremely important
 => RsaKeyGenerator:
-    + KHÔNG chạy cùng app
-    + KHÔNG phải service
-    + KHÔNG inject vào Spring
+    + DO NOT run with the app
+    + DO NOT be a service
+    + DO NOT inject into Spring
 
 #LIVE
-Generate bằng OpenSSL: Chạy trong terminal
-1. Tạo private key
+Generate using OpenSSL: Run in terminal
+1. Create private key
 openssl genpkey -algorithm RSA -out private_key.pem -pkeyopt rsa_keygen_bits:2048
-2. Tạo public key
+2. Create public key
 openssl rsa -pubout -in private_key.pem -out public_key.pem

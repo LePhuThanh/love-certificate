@@ -2,13 +2,13 @@ package com.phelim.system.love_certificate.service.application;
 
 import com.phelim.system.love_certificate.config.LoveCertificateProperties;
 import com.phelim.system.love_certificate.constant.BaseConstants;
-import com.phelim.system.love_certificate.constant.CertSessionStatus;
 import com.phelim.system.love_certificate.dto.request.*;
 import com.phelim.system.love_certificate.dto.response.*;
 import com.phelim.system.love_certificate.entity.Certificate;
 import com.phelim.system.love_certificate.entity.CertificateSession;
 import com.phelim.system.love_certificate.entity.CertificateVerifyLog;
 import com.phelim.system.love_certificate.entity.LoveStory;
+import com.phelim.system.love_certificate.enums.CertSessionStatus;
 import com.phelim.system.love_certificate.enums.CertificateType;
 import com.phelim.system.love_certificate.enums.VerifyType;
 import com.phelim.system.love_certificate.exception.BusinessException;
@@ -203,9 +203,9 @@ public class CertificateServiceImpl implements CertificateService {
     public void verifyOtp(VerifyOtpRequest req) {
         log.info("[CertificateServiceImpl][verifyOtp] Start. sessionId={}, otp={}", req.getSessionId(), req.getOtp());
         log.debug("-------------------------------Thread verifyOtp: {}", Thread.currentThread().getName());
-        log.debug("START verifyOtp {}", System.currentTimeMillis());
+        log.debug("START [CertificateServiceImpl][verifyOtp] {}", System.currentTimeMillis());
 
-        final int MAX_OTP_RETRY = loveCertificateProperties.getMaxOtpRetry(); //3
+        final int MAX_OTP_RETRY = loveCertificateProperties.getMaxOtpRetry(); //5
 
         // Validate sessionId exists - LOCK session here
         CertificateSession session = getSessionForUpdate(req.getSessionId());
@@ -320,7 +320,7 @@ public class CertificateServiceImpl implements CertificateService {
                     }
                 }
         );
-        log.debug("END verifyOtp {}", System.currentTimeMillis());
+        log.debug("END [CertificateServiceImpl][verifyOtp] {}", System.currentTimeMillis());
     }
 
     @Override
@@ -460,7 +460,7 @@ public class CertificateServiceImpl implements CertificateService {
                     .build();
 
         } catch (IOException ex) {
-            log.error("[verifyByHash] File read failed certId={}", certId, ex);
+            log.error("[CertificateVerifyService][verifyByHash] File read failed certId={}", certId, ex);
             throw new BusinessException(ErrorCode.FILE_READ_FAILED, "certId=" + certId);
         }
     }

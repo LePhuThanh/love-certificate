@@ -3,7 +3,6 @@ package com.phelim.system.love_certificate.dto.request;
 import com.phelim.system.love_certificate.dto.HasRequestId;
 import com.phelim.system.love_certificate.enums.Region;
 import com.phelim.system.love_certificate.validation.annotation.PhoneNumber;
-import jakarta.persistence.Column;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,10 +29,7 @@ public class InitRequest implements HasRequestId {
     @NotNull(message = "loveStartDate is required")
     private LocalDate loveStartDate;
 
-    //    @Pattern(
-//            regexp = "^[A-Za-z0-9+_.-]+@(.+)$",
-//            message = "Invalid email format"
-//    )
+    //    @Pattern(regexp = "^[A-Za-z0-9+_.-]+@(.+)$", message = "Invalid email format")
     @NotBlank(message = "email is required")
     @Email(message = "Invalid email format")
     private String email;
