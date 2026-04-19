@@ -43,6 +43,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -171,6 +172,10 @@ public class CertificateServiceImpl implements CertificateService {
 
         String otp = "123456";
 
+        // Send OTP via SMS (Blocking)
+        otpService.sendOtp(phoneNumber, otp);
+
+        // Save OTP only after success
         session.setOtp(otp);
 //        session.setOtpHash(otpHash);
 //        session.setOtpSalt(otpSalt);
@@ -180,23 +185,20 @@ public class CertificateServiceImpl implements CertificateService {
 
         sessionRepo.save(session);
 
-        // Send OTP via SMS
-        otpService.sendOtp(phoneNumber, otp);
-
-        log.info("[CertificateServiceImpl][sendOtp] Otp={} sessionId={}", otp, session.getSessionId());
+        log.info("[CertificateServiceImpl][sendOtp] Otp={} sent & saved SUCCESS. sessionId={}, otpExpireAt={}",
+                otp, session.getSessionId(), session.getOtpExpireAt());
     }
-
 
     /**
      *
      1. DB-level lock (most important)
-     FOR UPDATE → only one thread can process the session
-     2. afterCommit → prevents rollback bugs
+     FOR UPDATE => only one thread can process the session
+     2. afterCommit => prevents rollback bugs
      async only runs when the DB has committed
      3. Async still has its own lock
      double protection (defensive design)
      4. Idempotent check
-     PROCESSING / COMPLETED → return
+     PROCESSING / COMPLETED => return
      */
     @Override
     @Transactional

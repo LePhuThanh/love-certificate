@@ -29,19 +29,20 @@ public enum ErrorCode {
     FILE_READ_FAILED("LC503", "File read failed"),
     LOAD_KEY_FAILED("LC504", "Load key failed"),
     DATA_NOT_FOUND("LC505", "Not found certificate"),
+    CIRCUIT_BREAKER_NOT_FOUND("LC505", "Circuit breaker not found"),
 
     OTP_EXPIRED("LC505", "OTP has expired"),
     INVALID_OTP("LC505", "Invalid OTP"),
 
-    OTP_SEND_FAILED("SMS001","Unable to send OTP via SMS. Please try again later."),
-    EMAIL_SEND_FAILED("SMS001","Unable to send message via email. Please try again later."),
+    OTP_SEND_FAILED("SMS001","Unable to send OTP via SMS. Please try again later"),
+    EMAIL_SEND_FAILED("SMS001","Unable to send message via email. Please try again later"),
 
-    TIMEOUT_ERROR("504", "Hết thời gian chờ xử lý (Timeout)"),
+    TIMEOUT_ERROR("504", "The request timed out while waiting for a response"),
     FEIGN_CLIENT_BUSINESS_ERROR("FC111", "FeignClient service returned business error"),
     FEIGN_CLIENT_DETAIL_MESSAGE_ERROR_FOR_NOT_OK("FC112","Detail error message for 01 code from Audit Service"),
     FEIGN_CLIENT_NOT_FOUND("WL003", "Feign client not found"),
     DOWNSTREAM_SERVICE_UNAVAILABLE("WL003", "Downstream service is unavailable or returned an internal error"),
-    FEIGN_CLIENT_UNAVAILABLE("503", "Dịch vụ tạm thời không khả dụng"),
+    FEIGN_CLIENT_UNAVAILABLE("503", "The service is temporarily unavailable. Please try again later"),
     FEIGN_CLIENT_INVALID_RESPONSE("FC110", "Invalid response from FeignClient service"),
 
     CERTIFICATE_REVOKED("FC110", "Cannot update love story after revoke"),
@@ -52,6 +53,8 @@ public enum ErrorCode {
     INTL_PHONE_NUMBER_INVALID_FORMAT("FC110","Invalid phone number format"),
 
     MAX_RETRY_EXCEEDED("FC110","Exceeded the number of OTP retry."),
+
+    SMS_FAILED("FC110", "Failed to send OTP. Please try again later"),
 
     IDENTIFICATION_INVALID_FORMAT("FC110", "Identification invalid format"),
     PHONE_MISMATCH("FC110", "Phone number mismatch the core session phone number");

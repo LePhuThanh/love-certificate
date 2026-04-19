@@ -22,34 +22,60 @@ ext {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	// Core
 	implementation 'org.springframework.boot:spring-boot-starter-web'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-
-	compileOnly 'org.projectlombok:lombok'
-	runtimeOnly 'com.h2database:h2'
-	annotationProcessor 'org.projectlombok:lombok'
-
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 
+	// Db
+	runtimeOnly 'com.h2database:h2'
+
+	// Test
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	// Template + pdf
 	implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
 	implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
 
+	// Qr
 	implementation 'com.google.zxing:core:3.5.3'
 	implementation 'com.google.zxing:javase:3.5.3'
 
-	//config log "com.openhtmltopdf"
+	// config log "com.openhtmltopdf"
 	implementation 'org.slf4j:jul-to-slf4j'
 
+	// Feign
 	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+	// Mail
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 
-	//Caching
+	// Caching
 	implementation 'org.springframework.boot:spring-boot-starter-cache'
 	implementation 'com.github.ben-manes.caffeine:caffeine'
 
-	//handle phoneNumber custom annotation + libphonenumber
-	implementation 'com.googlecode.libphonenumber:libphonenumber:9.0.25'
+	// Google libphonenumber => handle phoneNumber
+	implementation 'com.googlecode.libphonenumber:libphonenumber:8.13.40'
+
+	/**
+	 Spring has two types of AOP:
+	 1. Proxy-based AOP (Spring core): @Transactional, @Cacheable
+	 => Can run "temporarily" without a full AOP starter
+	 2. Aspect-based AOP (Resilience4j): @Retry, @CircuitBreaker
+	 * */
+	// Aop for Resilience4j
+	implementation 'org.springframework:spring-aop'
+	implementation 'org.aspectj:aspectjweaver'
+
+	// Resilience4j (retry + circuit breaker)
+//    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
+	// Resilience4j core only (NO spring starter)
+	implementation 'io.github.resilience4j:resilience4j-retry:2.2.0'
+	implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.2.0'
 }
 
 dependencyManagement {

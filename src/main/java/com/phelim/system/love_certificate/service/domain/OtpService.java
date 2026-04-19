@@ -1,12 +1,20 @@
 package com.phelim.system.love_certificate.service.domain;
 
 import com.phelim.system.love_certificate.config.LoveCertificateProperties;
+import com.phelim.system.love_certificate.config.resilience.ResilienceFactory;
 import com.phelim.system.love_certificate.constant.BaseConstants;
+import com.phelim.system.love_certificate.enums.CircuitName;
+import com.phelim.system.love_certificate.enums.RetryName;
 import com.phelim.system.love_certificate.exception.BusinessException;
 import com.phelim.system.love_certificate.exception.ErrorCode;
+//import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+//import io.github.resilience4j.retry.annotation.Retry;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.retry.RetryRegistry;
+import io.github.resilience4j.retry.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKeyFactory;
@@ -22,26 +30,63 @@ public class OtpService {
 
     private final ClientService clientService;
     private final LoveCertificateProperties loveCertProperties;
-
-    @Value("${sms.environment}")
-    private String environment;
+    private final ResilienceFactory resilienceFactory;
 
     public void sendOtp(String phoneNumber, String otp) {
         log.info("[OtpService][sendOtp] Sending OTP to phone: {}, OTP: {}", phoneNumber, otp);
 
-        // Build message
-        String message = "Quy khach vui long nhap " + otp + " de xac nhan lien ket. Hotline 19006679.";
-        log.info("[OtpService][sendOtp] Generated OTP={}, phoneNumber={}", otp, phoneNumber);
+        Retry retry = resilienceFactory.getRetry(RetryName.SMS);
+        CircuitBreaker circuitBreaker = resilienceFactory.getCircuitBreaker(CircuitName.SMS);
 
-        // Send SMS
-        if (BaseConstants.TEST_ENVIRONMENT.equalsIgnoreCase(environment)){
-            log.info("[OtpService][sendOtp] TEST environment - Skip sending SMS");
-        } else {
-            clientService.sendOtp(phoneNumber, message);
+        Runnable decorated = CircuitBreaker.decorateRunnable(
+                circuitBreaker,
+                Retry.decorateRunnable(
+                        retry,
+                        () -> {
+                            log.info(">>> -------------------------------------METHOD EXECUTED - sendOtp-------------------------------------");
+
+                            // Build message
+                            String message = "Quy khach vui long nhap " + otp + " de xac nhan lien ket. Hotline 19003979.";
+
+                            // Send SMS => BLOCKING call
+                            clientService.sendOtp(phoneNumber, message);
+
+                            log.info("[OtpService][sendOtp] Otp sent successfully to: {}", phoneNumber);
+                        })
+        );
+        try {
+            decorated.run();
+        } catch (Exception ex) {
+            log.error("[OtpService][sendOtp] All retry failed", ex);
+            fallbackSendOtp(phoneNumber, otp, ex);
         }
-
-        log.info("[OtpService][sendOtp] Otp sent successfully to: {}", phoneNumber);
     }
+
+    /** Cmt by Phelim (14/06/2026)
+     * FALLBACK when:
+     * retry fail
+     * circuit open
+     */
+    public void fallbackSendOtp(String phoneNumber, String otp, Throwable ex) {
+        log.error("[OtpService][fallbackSendOtp] SMS failed because SMS service unavailable phoneNumber={}", phoneNumber, ex);
+        throw new BusinessException(ErrorCode.SMS_FAILED, "phoneNumber=" + phoneNumber);
+    }
+
+//    @Retry(name = "smsRetry")
+//    @CircuitBreaker(name = "smsCircuit", fallbackMethod = "fallbackSendOtp")
+//    public void sendOtp(String phoneNumber, String otp) {
+//        log.info(">>> --------------------------METHOD EXECUTED - sendOtp--------------------------");
+//        log.info("[OtpService][sendOtp] Sending OTP to phone: {}, OTP: {}", phoneNumber, otp);
+//
+//        // Build message
+//        String message = "Quy khach vui long nhap " + otp + " de xac nhan lien ket. Hotline 19006679.";
+//        log.info("[OtpService][sendOtp] Generated OTP={}, phoneNumber={}", otp, phoneNumber);
+//
+//        // Send SMS => BLOCKING call
+//        clientService.sendOtp(phoneNumber, message);
+//
+//        log.info("[OtpService][sendOtp] Otp sent successfully to: {}", phoneNumber);
+//    }
 
     // =========================
     // HASH OTP
