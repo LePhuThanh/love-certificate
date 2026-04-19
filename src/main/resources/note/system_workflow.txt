@@ -17,6 +17,120 @@
 
     [4] SEND OTP
     => xác nhận user muốn generate
+        Client gọi /v1/send-otp
+                ↓
+        Controller
+                ↓
+        CertificateService.sendOtp()
+
+            [4.1] Validate session (DRAFT)
+
+            [4.2] Validate phoneNumber (E164)
+
+            [4.3] Generate OTP (TEST hiện hardcode /LIVE sau random + hash)
+
+            [4.4] CALL OtpService.sendOtp() (Resilience Layer)
+
+                  - Synchronous (blocking)
+                  - Protected by Resilience4j:
+                      + Retry: retry transient errors (timeout, network)
+                      + CircuitBreaker: prevent calling failing downstream
+
+                  - Exception flow:
+                      + Technical exception → retry
+                      + Business exception → no retry
+
+                  - Fallback:
+                      + Triggered when retry exhausted OR circuit OPEN
+                      + Throw BusinessException (fail fast)
+
+                  Guarantees:
+                      - Strong consistency
+                      - No async ambiguity
+                      - No silent failure
+                      - System protection under load
+            --------------------------------------DETAIL-----------------------------------------
+                CALL OtpService.sendOtp()  (Resilience Layer)
+                               ↓
+                Spring AOP Proxy (Resilience4j)
+                               ↓
+                ┌───────────────────────────────┐
+                │ Retry (smsRetry)              │
+                │ - maxAttempts = 3             │
+                │ - chỉ retry lỗi TECHNICAL     │
+                └──────────────┬────────────────┘
+                               ↓
+                ┌───────────────────────────────┐
+                │ CircuitBreaker (smsCircuit)   │
+                │ - failureRateThreshold = 50%  │
+                │ - OPEN khi downstream fail    │
+                └──────────────┬────────────────┘
+                               ↓
+                ┌───────────────────────────────┐
+                │ CALL ClientService.sendOtp()  │
+                │ (Feign - BLOCKING)            │
+                └──────────────┬────────────────┘
+                               ↓
+                         SMS Provider
+
+                ClientService
+                    ↓
+                Exception xảy ra
+                    ↓
+                PHÂN LOẠI:
+                    retry: Technical Exception:
+                        - feign.RetryableException
+                        - FeignException (5xx, 408, 504)
+                        - IOException
+                        => THROW NGUYÊN BẢN
+                        => Retry bắt được
+
+                    không retry: Business Exception:
+                        - response != OK
+                        - invalid data
+                        => throw BusinessException
+                        => KHÔNG retry
+                ────────────────────────────────
+
+                CASE 1: SUCCESS
+                    → return bình thường
+                    → save OTP
+
+                CASE 2: RETRY SUCCESS
+                    Lần 1 fail (timeout)
+                    → Retry
+                    Lần 2 success
+                    → continue flow
+                    → save OTP
+
+                CASE 3 – RETRY EXHAUSTED
+                    3 lần đều fail
+                    → fallback
+                    → throw BusinessException (SMS_FAILED)
+
+                CASE 4 – CIRCUIT OPEN
+                    Circuit OPEN
+                    → KHÔNG gọi SMS
+                    → fallback ngay
+                    → throw BusinessException
+
+                CASE 5 – BUSINESS ERROR (SMS trả lỗi)
+                    response.code != OK
+                    → throw BusinessException
+                    → KHÔNG retry
+
+            [4.5] FALLBACK (CRITICAL)
+                    fallbackSendOtp()
+                        ↓
+                    throw BusinessException (SMS_FAILED)
+
+            [4.6] SAVE OTP (ONLY WHEN SUCCESS)
+                    ONLY IF:
+                        SMS call SUCCESS
+                    => set: otp, expire time, status = OTP_PENDING
+                      => save DB
+
+            [4.7] RETURN RESPONSE
 
     [5] VERIFY OTP
     => hợp lệ => trigger async
@@ -158,22 +272,24 @@ retry lại
 Có caching
 Có custom Annotation @PhoneNumber & Using libphonenumber
 -------------------------------------------------------------------------------------------------------------------------------------------------------
+
+----------------------------------
 Cmt by Phelim (10/04/2026)
 Flow hoạt động của CACHE (filter)
 
 1. MISS Cache:
     Request
-      → Spring Cache Proxy intercept
-          → cache NOT FOUND (MISS)
-          → gọi method thật
-              → AOP (CacheHeaderAspect) chạy:
+      => Spring Cache Proxy intercept
+          => cache NOT FOUND (MISS)
+          => gọi method thật
+              => AOP (CacheHeaderAspect) chạy:
                     set:
                       X_CACHE = MISS
                       X_CACHE_NAME = publicCert   (lấy từ @Cacheable)
                       X_CACHE_KEY = cert:CERT_123 (evaluate từ SpEL key)
-              → method business chạy (DB, RSA, ...)
-              → kết quả được lưu vào cache
-      → Filter (CacheHeaderFilter) chạy cuối:
+              => method business chạy (DB, RSA, ...)
+              => kết quả được lưu vào cache
+      => Filter (CacheHeaderFilter) chạy cuối:
             đọc attribute từ request
             set header vào response
 
@@ -184,21 +300,21 @@ Flow hoạt động của CACHE (filter)
 
 2. HIT Cache:
     Request
-      → Spring Cache Proxy intercept
-          → cache FOUND (HIT)
-          → return data ngay (KHÔNG gọi method)
-          → AOP KHÔNG chạy
-          → không có attribute nào được set
+      => Spring Cache Proxy intercept
+          => cache FOUND (HIT)
+          => return data ngay (KHÔNG gọi method)
+          => AOP KHÔNG chạy
+          => không có attribute nào được set
 
-      → Filter (CacheHeaderFilter):
-            không thấy X_CACHE → default = HIT
+      => Filter (CacheHeaderFilter):
+            không thấy X_CACHE => default = HIT
             không có cacheName / key
 
     Response:
       X-Cache: HIT
 
-Insight: MISS → đi qua method → AOP có dữ liệu → đầy đủ header
-         HIT  → không đi qua method → AOP không chạy → chỉ biết HIT
+Insight: MISS => đi qua method => AOP có dữ liệu => đầy đủ header
+         HIT  => không đi qua method => AOP không chạy => chỉ biết HIT
 
 Pipeline: Client
             ↓

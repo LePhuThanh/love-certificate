@@ -26,8 +26,9 @@ public final class BaseConstants {
     public static final String HIT_CACHE = "HIT";
     public static final String MISS_CACHE = "MISS";
 
-    public static final String ASYNC_NAME = "asyncTaskExecutor";
-    public static final String SCHEDULER_NAME = "schedulerTaskExecutor";
+    public static final String EXECUTOR_ASYNC_GENERATE_CER = "generateCerExecutor";
+    public static final String EXECUTOR_SCHEDULER = "schedulerTaskExecutor";
+    public static final String EXECUTOR_ASYNC_SMS = "smsExecutor";
 
     public static final String HASH = "HASH";
     public static final String USER_AGENT = "User-Agent";
@@ -90,6 +91,7 @@ public final class BaseConstants {
     public static final String PUBLIC_CERT = "publicCert";
     public static final String TRUST_SCORE = "trustScore";
     public static final String TIMELINE = "timeline";
+
 
     //API
     public static final String API_VERSION_1 = "/v1";

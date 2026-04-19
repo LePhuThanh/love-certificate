@@ -1,4 +1,4 @@
-package com.phelim.system.love_certificate.config.scheduler;
+package com.phelim.system.love_certificate.config.thread;
 
 import com.phelim.system.love_certificate.constant.BaseConstants;
 import org.springframework.context.annotation.Bean;
@@ -13,7 +13,7 @@ import java.util.concurrent.Executor;
 @EnableScheduling
 @EnableAsync
 public class SchedulerConfig {
-    @Bean(name = BaseConstants.SCHEDULER_NAME)
+    @Bean(name = BaseConstants.EXECUTOR_SCHEDULER)
     public Executor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(5); // core threads

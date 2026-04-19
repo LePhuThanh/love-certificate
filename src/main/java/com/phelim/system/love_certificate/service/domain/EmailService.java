@@ -20,7 +20,7 @@ public class EmailService {
     @Value("${app.mail.from}")
     private String from;
 
-    @Async(BaseConstants.SCHEDULER_NAME)
+    @Async(BaseConstants.EXECUTOR_SCHEDULER)
     public void sendMilestoneEmail(String toEmail, String maleName, String femaleName, int days, String label) {
         log.info("[EmailService][sendMilestoneEmail] Start to={}, days={}, label={}", toEmail, days, label);
 
