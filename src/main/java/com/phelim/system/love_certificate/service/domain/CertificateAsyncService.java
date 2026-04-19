@@ -56,7 +56,7 @@ public class CertificateAsyncService {
      *      - Hash is computed from final persisted PDF
      *      - Any modification of PDF will break hash equality
      */
-    @Async(BaseConstants.ASYNC_NAME)
+    @Async(BaseConstants.EXECUTOR_ASYNC_GENERATE_CER)
     @Transactional
     public void generateAsync(String sessionId) {
         log.info("[CertificateAsyncService][generateAsync] Start. sessionId={}", sessionId);
