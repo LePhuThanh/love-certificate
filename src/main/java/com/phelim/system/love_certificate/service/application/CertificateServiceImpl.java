@@ -171,7 +171,7 @@ public class CertificateServiceImpl implements CertificateService {
 //        String otpSalt = otpService.encodeSalt(salt);
 
         String otp = "123456";
-
+        //
         // Send OTP via SMS (Blocking)
         otpService.sendOtp(phoneNumber, otp);
 
