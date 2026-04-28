@@ -2,31 +2,31 @@ Updated by Phelim (15/04/2026)
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 🔥 1. GENERATE FLOW
 Step    API
-INIT    ✅ http://localhost:8080/core/love-certificates/v1/init
-PREVIEW ✅ http://localhost:8080/core/love-certificates/v1/preview
-SAVE STORY  ✅ http://localhost:8080/core/love-certificates/v1/sessions/upsert-story
-SEND OTP    ✅ http://localhost:8080/core/love-certificates/v1/send-otp
-VERIFY OTP  ✅ http://localhost:8080/core/love-certificates/v1/verify-otp
+INIT        http://localhost:8080/core/love-certificates/v1/init
+PREVIEW     http://localhost:8080/core/love-certificates/v1/preview
+SAVE STORY  http://localhost:8080/core/love-certificates/v1/sessions/upsert-story
+SEND OTP    http://localhost:8080/core/love-certificates/v1/send-otp
+VERIFY OTP  http://localhost:8080/core/love-certificates/v1/verify-otp
 GENERATE ASYNC  (internal @Async trong API4)
 
 🔥 2. STATUS FLOW
 Step    API
-CHECK STATUS    ✅ http://localhost:8080/core/love-certificates/v1/status/CS_D85650E4
-DOWNLOAD FILE   ✅ http://localhost:8080/core/love-certificates/v1/certificates/CS_D85650E4/download
+CHECK STATUS    http://localhost:8080/core/love-certificates/v1/status/CS_D85650E4
+DOWNLOAD FILE   http://localhost:8080/core/love-certificates/v1/certificates/CS_D85650E4/download
 
 🔥 3. PUBLIC FLOW (CORE)
 Step    API
-PUBLIC PAGE ✅ http://localhost:8080/core/love-certificates/v1/public/cert/CERT_BA091E05
+PUBLIC PAGE     http://localhost:8080/core/love-certificates/v1/public/cert/CERT_BA091E05
 
 🔥 4. STORY FLOW
 Step    API
-SAVE STORY  ✅ http://localhost:8080/core/love-certificates/v1/upsert-story
-HISTORY ✅ http://localhost:8080/core/love-certificates/v1/sessions/CS_D85650E4/story/history
+SAVE STORY      http://localhost:8080/core/love-certificates/v1/upsert-story
+HISTORY         http://localhost:8080/core/love-certificates/v1/sessions/CS_D85650E4/story/history
 
 🔥 5. TRUST & TIMELINE
 Feature API
-TRUST SCORE ✅ http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/trust-score
-TIMELINE    ✅ http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/timeline
+TRUST SCORE     http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/trust-score
+TIMELINE        http://localhost:8080/core/love-certificates/v1/CERT_BA091E05/timeline
 (đã dùng trong PUBLIC PAGE rồi - đây gọi riêng để dễ scale)
 
 🔥 6. VERIFY APIs (đang “lẻ”)

@@ -1,148 +1,144 @@
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 🔥 A. GENERATE FLOW (User tạo certificate)
     [1] INIT
-    User nhập thông tin
-    => tạo CertificateSession (status = DRAFT)
-
+        User nhập thông tin
+            => tạo CertificateSession (status = DRAFT)
     [2] PREVIEW
-    User xem trước certificate (PDF temp)
-    => no hash
-    => no signature
-    => no lưu file
-
+        User xem trước certificate (PDF temp)
+            => no hash
+            => no signature
+            => no lưu file
     [3] WRITE / UPDATE STORY (optional)
-    User nhập love story
-    => lưu theo sessionId
-    => có version history
-
+        User nhập love story
+            => lưu theo sessionId
+            => có version history
     [4] SEND OTP
-    => xác nhận user muốn generate
-        Client gọi /v1/send-otp
-                ↓
-        Controller
-                ↓
-        CertificateService.sendOtp()
-
-            [4.1] Validate session (DRAFT)
-
-            [4.2] Validate phoneNumber (E164)
-
-            [4.3] Generate OTP (TEST hiện hardcode /LIVE sau random + hash)
-
-            [4.4] CALL OtpService.sendOtp() (Resilience Layer)
-
-                  - Synchronous (blocking)
-                  - Protected by Resilience4j:
-                      + Retry: retry transient errors (timeout, network)
-                      + CircuitBreaker: prevent calling failing downstream
-
-                  - Exception flow:
-                      + Technical exception → retry
-                      + Business exception → no retry
-
-                  - Fallback:
-                      + Triggered when retry exhausted OR circuit OPEN
-                      + Throw BusinessException (fail fast)
-
-                  Guarantees:
-                      - Strong consistency
-                      - No async ambiguity
-                      - No silent failure
-                      - System protection under load
-            --------------------------------------DETAIL-----------------------------------------
-                CALL OtpService.sendOtp()  (Resilience Layer)
-                               ↓
-                Spring AOP Proxy (Resilience4j)
-                               ↓
-                ┌───────────────────────────────┐
-                │ Retry (smsRetry)              │
-                │ - maxAttempts = 3             │
-                │ - chỉ retry lỗi TECHNICAL     │
-                └──────────────┬────────────────┘
-                               ↓
-                ┌───────────────────────────────┐
-                │ CircuitBreaker (smsCircuit)   │
-                │ - failureRateThreshold = 50%  │
-                │ - OPEN khi downstream fail    │
-                └──────────────┬────────────────┘
-                               ↓
-                ┌───────────────────────────────┐
-                │ CALL ClientService.sendOtp()  │
-                │ (Feign - BLOCKING)            │
-                └──────────────┬────────────────┘
-                               ↓
-                         SMS Provider
-
-                ClientService
+        => xác nhận user muốn generate
+            Client gọi /v1/send-otp
                     ↓
-                Exception xảy ra
+            Controller
                     ↓
-                PHÂN LOẠI:
-                    retry: Technical Exception:
-                        - feign.RetryableException
-                        - FeignException (5xx, 408, 504)
-                        - IOException
-                        => THROW NGUYÊN BẢN
-                        => Retry bắt được
+            CertificateService.sendOtp()
+                [4.0] RATE LIMIT (NEW – CRITICAL LAYER)
+                                Multi-dimension rate limit:
+                                    + PHONE
+                                    + IP
+                                    + SESSION
+                                Flow:
+                                    checkSendOtpAllowed(phone, ip, sessionId)
+                                        ↓
+                                    FOR EACH dimension:
+                                        - FIRST request → allow
+                                        - Cooldown violation → BLOCK (TOO_MANY_REQUEST)
+                                        - Max attempts exceeded → BLOCK
+                                Key format:
+                                    PHONE:0338889999
+                                    IP:1.1.1.1
+                                    SESSION:abc123
+                                Guarantees:
+                                    - Prevent spam OTP
+                                    - Protect SMS cost
+                                    - Protect system resource
+                                    - Block request BEFORE calling downstream
+                                If violated:
+                                    => throw BusinessException (TOO_MANY_REQUEST)
+                                    => STOP FLOW (không gọi OTP service)
+                [4.1] Validate session (DRAFT)
+                [4.2] Validate phoneNumber (E164)
+                [4.3] Generate OTP (TEST hiện hardcode /LIVE sau random + hash)
+                [4.4] CALL OtpService.sendOtp() (Resilience Layer)
+                      - Synchronous (blocking)
+                      - Protected by Resilience4j:
+                          + Retry: retry transient errors (timeout, network)
+                          + CircuitBreaker: prevent calling failing downstream
+                      - Exception flow:
+                          + Technical exception => retry
+                          + Business exception => no retry
+                      - Fallback:
+                          + Triggered when retry exhausted OR circuit OPEN
+                          + Throw BusinessException (fail fast)
+                      - Guarantees:
+                          - Strong consistency
+                          - No async ambiguity
+                          - No silent failure
+                          - System protection under load
+                --------------------------------------DETAIL-----------------------------------------
+                    CALL OtpService.sendOtp()  (Resilience Layer)
+                                   ↓
+                    Spring AOP Proxy (Resilience4j)
+                                   ↓
+                         Retry (smsRetry)
+                         - maxAttempts = 3
+                         - chỉ retry lỗi TECHNICAL
+                                   ↓
+                         CircuitBreaker (smsCircuit)
+                         - failureRateThreshold = 50%
+                         - OPEN khi downstream fail
+                                   ↓
+                         CALL ClientService.sendOtp()
+                         (Feign - BLOCKING)
+                                   ↓
+                             SMS Provider
 
-                    không retry: Business Exception:
-                        - response != OK
-                        - invalid data
+                    ClientService
+                        ↓
+                    Exception xảy ra
+                        ↓
+                    PHÂN LOẠI:
+                        + retry: Technical Exception:
+                            - feign.RetryableException
+                            - FeignException (5xx, 408, 504)
+                            - IOException
+                            => THROW NGUYÊN BẢN
+                            => Retry bắt được
+                        + không retry: Business Exception:
+                            - response != OK
+                            - invalid data
+                            => throw BusinessException
+                            => KHÔNG retry
+                    ────────────────────────────────
+                    CASE 1: SUCCESS
+                        => return bình thường
+                        => save OTP
+                    CASE 2: RETRY SUCCESS
+                        Lần 1 fail (timeout)
+                        => Retry
+                        Lần 2 success
+                        => continue flow
+                        => save OTP
+                    CASE 3 – RETRY EXHAUSTED
+                        3 lần đều fail
+                        => fallback
+                        => throw BusinessException (SMS_FAILED)
+                    CASE 4 – CIRCUIT OPEN
+                        Circuit OPEN
+                        => KHÔNG gọi SMS
+                        => fallback ngay
+                        => throw BusinessException
+                    CASE 5 – BUSINESS ERROR (SMS trả lỗi)
+                        response.code != OK
                         => throw BusinessException
                         => KHÔNG retry
-                ────────────────────────────────
-
-                CASE 1: SUCCESS
-                    → return bình thường
-                    → save OTP
-
-                CASE 2: RETRY SUCCESS
-                    Lần 1 fail (timeout)
-                    → Retry
-                    Lần 2 success
-                    → continue flow
-                    → save OTP
-
-                CASE 3 – RETRY EXHAUSTED
-                    3 lần đều fail
-                    → fallback
-                    → throw BusinessException (SMS_FAILED)
-
-                CASE 4 – CIRCUIT OPEN
-                    Circuit OPEN
-                    → KHÔNG gọi SMS
-                    → fallback ngay
-                    → throw BusinessException
-
-                CASE 5 – BUSINESS ERROR (SMS trả lỗi)
-                    response.code != OK
-                    → throw BusinessException
-                    → KHÔNG retry
-
-            [4.5] FALLBACK (CRITICAL)
-                    fallbackSendOtp()
-                        ↓
-                    throw BusinessException (SMS_FAILED)
-
-            [4.6] SAVE OTP (ONLY WHEN SUCCESS)
-                    ONLY IF:
-                        SMS call SUCCESS
-                    => set: otp, expire time, status = OTP_PENDING
-                      => save DB
-
-            [4.7] RETURN RESPONSE
-
+                [4.5] FALLBACK (CRITICAL)
+                        fallbackSendOtp()
+                            ↓
+                        throw BusinessException (SMS_FAILED)
+                [4.6] SAVE OTP (ONLY WHEN SUCCESS)
+                        ONLY IF:
+                            SMS call SUCCESS
+                        => set: otp, expire time, status = OTP_PENDING
+                          => save DB
+                [4.7] RETURN RESPONSE
     [5] VERIFY OTP
-    => hợp lệ => trigger async
-
+        => hợp lệ => trigger async
     [6] GENERATE (ASYNC)
-    System tạo certificate chính thức:
-    => render PDF (KHÔNG chứa story)
-    => generate QR (/public/cert/{certId})
-    => hash (SHA-256)
-    => RSA signature
-    => lưu file + hash + signature
-    => status = COMPLETED
+        System tạo certificate chính thức:
+        => render PDF (KHÔNG chứa story)
+        => generate QR (/public/cert/{certId})
+        => hash (SHA-256)
+        => RSA signature
+        => lưu file + hash + signature
+        => status = COMPLETED
 
     * afterCommit + @Async (TransactionSynchronizationManager)
     Thread A (request)
@@ -150,15 +146,13 @@
           └─ commit transaction
               └─ afterCommit()
                    └─ gọi generateAsync()
-
     Thread B (async pool)
       └─ chạy generateAsync()
 
-
 🔥 B. STATUS FLOW (polling + async)
     User gọi API getCertificateStatus lấy status => (/v1/status/{sessionId})
-    => biết đang PROCESSING / COMPLETED
-    => nếu COMPLETED => lấy fileUrl
+        => biết đang PROCESSING / COMPLETED
+        => nếu COMPLETED => lấy fileUrl
     User download certificate  => /v1/certificates/{cerId}/download
 
 Có nghĩa :
@@ -186,91 +180,79 @@ User share PDF
 
 🔥 D. PUBLIC VERIFY FLOW (core product)
 GET /public/cert/{certId} => page load => auto verify RSA ...=> hiển thị kết quả
-
-System xử lý:
-    [1] VERIFY (AUTO)
-    => đọc file
-    => verify RSA
-    => xác định VALID / TAMPERED
-
-    [2] LOAD STORY
-    => certId => sessionId => story
-
-    [3] LOAD TRUST SCORE
-    => validRatio
-    => uniqueUsers
-    => fraud detection
-
-    [4] LOAD TIMELINE
-    => milestone (system)
-    => story history
-
+    System xử lý:
+        [1] VERIFY (AUTO)
+            => đọc file
+            => verify RSA
+            => xác định VALID / TAMPERED
+        [2] LOAD STORY
+            => certId => sessionId => story
+        [3] LOAD TRUST SCORE
+            => validRatio
+            => uniqueUsers
+            => fraud detection
+        [4] LOAD TIMELINE
+            => milestone (system)
+            => story history
     [5] RETURN RESPONSE
-
 🔥 E. ADVANCED VERIFY (manual/debug/admin)
     User/Admin có thể:
-
-    => verify HASH
-    => verify RSA riêng
-    => xem verify history
-    => xem verify summary
-
+        => verify HASH
+        => verify RSA riêng
+        => xem verify history
+        => xem verify summary
 🔥 F. ADMIN FLOW
-    => revoke certificate
-    => xem verify history
-    => audit trust
-
+        => revoke certificate
+        => xem verify history
+        => audit trust
 🔥 D. PUBLIC PAGE (UI)
-    ✔ Certificate Status (VALID / TAMPERED)
-    ✔ Love Story (current)
-    ✔ Story History
-    ✔ Trust Score
-    ✔ Timeline (milestones)
-
+        + Certificate Status (VALID / TAMPERED)
+        + Love Story (current)
+        + Story History
+        + Trust Score
+        + Timeline (milestones)
 🔥 E EXPERIENCE LAYER (Detail below)
-Hệ thống tự động:
-    + ghi nhận các cột mốc tình yêu (milestones)
-    + gửi thông báo (email) đến người dùng
-    + đảm bảo không gửi trùng
-    + đảm bảo retry khi lỗi
-    + đảm bảo không mất job khi system crash
+    Hệ thống tự động:
+        + ghi nhận các cột mốc tình yêu (milestones)
+        + gửi thông báo (email) đến người dùng
+        + đảm bảo không gửi trùng
+        + đảm bảo retry khi lỗi
+        + đảm bảo không mất job khi system crash
 
-MilestoneScheduler
-    ↓
-MilestoneService
-    ↓
-EmailService (@Async)
-    ↓
-[SMTP]
-    ↓
-SUCCESS => DONE
+    MilestoneScheduler
+        ↓
+    MilestoneService
+        ↓
+    EmailService (@Async)
+        ↓
+    [SMTP]
+        ↓
+    SUCCESS => DONE
 
-FAIL => EmailJob (FAILED)
-            ↓
-───────────────
-EmailRetryScheduler
-            ↓
-claim => PROCESSING
-            ↓
-send email
-    ↓
-SUCCESS => SENT
-FAIL => FAILED / DEAD
-
+    FAIL => EmailJob (FAILED)
+                ↓
+    ───────────────
+    EmailRetryScheduler
+                ↓
+    claim => PROCESSING
+                ↓
+    send email
+        ↓
+    SUCCESS => SENT
+    FAIL => FAILED / DEAD
 🔥 Nếu system crash:
-=> job stuck = PROCESSING
+    => job stuck = PROCESSING
+    ───────────────
+    EmailRecoverScheduler
+                ↓
+    detect stuck job
+                ↓
+    reset => FAILED
+                ↓
+    retry lại
 
-───────────────
-EmailRecoverScheduler
-            ↓
-detect stuck job
-            ↓
-reset => FAILED
-            ↓
-retry lại
-
-Có caching
-Có custom Annotation @PhoneNumber & Using libphonenumber
+ 🔥   Có caching
+ 🔥   Có custom Annotation @PhoneNumber & Using libphonenumber
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ----------------------------------
@@ -361,9 +343,9 @@ Thread khác:
     + Bản chất: System-driven (không cần user action)
     + Cơ chế hoạt động: @Scheduled (cron hoặc fixedRate) => tự động chạy theo thời gian
     + Flow: MilestoneScheduler => gọi MilestoneService.processRelationshipMilestones()
-    + Vai trò:✔ Trigger business event (milestone reached)
-            ✔ Không xử lý retry
-            ✔ Không giữ state
+    + Vai trò:+ Trigger business event (milestone reached)
+            + Không xử lý retry
+            + Không giữ state
 
 2. BUSINESS LAYER — MilestoneService
     + Bản chất: Core business logic của Experience Layer
@@ -385,9 +367,9 @@ Thread khác:
 
                      [7] Ghi log:
                          => lưu MilestoneLog (đảm bảo không gửi lại)
-    + Vai trò: ✔ Xác định event "milestone reached"
-               ✔ Đảm bảo idempotency (MilestoneLog)
-               ✔ Trigger notification (email)
+    + Vai trò: + Xác định event "milestone reached"
+               + Đảm bảo idempotency (MilestoneLog)
+               + Trigger notification (email)
 
 3. ASYNC LAYER — EmailService
     + Bản chất: Non-blocking execution (tách khỏi scheduler thread)
@@ -400,17 +382,17 @@ Thread khác:
 
                 CATCH:
                     => lưu EmailJob vào DB (status = FAILED)
-    + Vai trò: ✔ Tách IO khỏi scheduler
-               ✔ Không làm chậm system
-               ✔ Đẩy failure xuống DB (EmailJob)
+    + Vai trò: + Tách IO khỏi scheduler
+               + Không làm chậm system
+               + Đẩy failure xuống DB (EmailJob)
 4. QUEUE LAYER (DB-based) — EmailJob
     + Bản chất: Database đóng vai trò Message Queue
     + State machine: PENDING => PROCESSING => SENT
                                      => FAILED => RETRY
                                      => DEAD
-    + Vai trò: ✔ Lưu job bị fail
-               ✔ Là nguồn dữ liệu cho retry
-               ✔ Đảm bảo durability (không mất job)
+    + Vai trò: + Lưu job bị fail
+               + Là nguồn dữ liệu cho retry
+               + Đảm bảo durability (không mất job)
 
 5. RETRY LAYER — EmailRetryScheduler
     + Bản chất: Worker (consumer) của DB queue
@@ -435,10 +417,10 @@ Thread khác:
                     => tăng retryCount
                     => nếu < maxRetry => FAILED + nextRetryAt
                     => nếu >= maxRetry => DEAD
-    + Vai trò: ✔ Retry email bị fail
-               ✔ Xử lý queue
-               ✔ Áp dụng backoff retry
-               ✔ Đảm bảo không duplicate (DB locking)
+    + Vai trò: + Retry email bị fail
+               + Xử lý queue
+               + Áp dụng backoff retry
+               + Đảm bảo không duplicate (DB locking)
 
 6. RECOVERY LAYER — EmailRecoverScheduler
     + Bản chất: Self-healing mechanism
@@ -453,74 +435,6 @@ Thread khác:
 
             => nghĩa là:
                 job bị kẹt quá lâu => reset để retry lại
-    + Vai trò: ✔ Detect job bị "kẹt" (do crash / timeout)
-               ✔ Reset để retry tiếp
-               ✔ Đảm bảo system không bị dead job
-
--------------------------------------------------------------------------------------------------------------------------------------------------------
-🔥 BUSINESS CONTEXT
-🎯 Tổng kết ngắn gọn trước
-
-+ 3 layer:
-
-Core Product (Certificate)
-+ Trust System (Verify)
-+ Experience Layer (Milestone + Email)
-🧠 1. Toàn bộ SYSTEM FLOW (chuẩn hoá lại)
-
-Tôi gom lại thành 6 phase:
-
-🟢 PHASE A — GENERATE (Core Product)
-INIT => PREVIEW => STORY => OTP => VERIFY => ASYNC GENERATE
-
-👉 Ý nghĩa:
-
-CertificateSession = transaction boundary
-Certificate = immutable output
-
-👉 Thiết kế rất chuẩn:
-
-Session mutable
-Certificate immutable
-🟡 PHASE B — ASYNC + POLLING
-VERIFY OTP
-=> trigger async
-=> FE polling status
-=> COMPLETED => download
-
-👉 Chuẩn industry:
-
-✔ polling => sau nâng cấp WebSocket
-✔ không block user
-
-🔵 PHASE C — SHARE + PUBLIC VERIFY
-QR => /public/cert/{certId}
-=> verify RSA
-=> load story
-=> trust score
-=> timeline
-
-👉 Đây là:
-
-Trust System (rất xịn)
-🟣 PHASE D — ADMIN / ADVANCED
-
-✔ revoke
-✔ audit
-✔ verify history
-
-👉 đúng kiểu banking system mini
-
-🔴 PHASE E — EXPERIENCE LAYER (bạn vừa build)
-Scheduler
-=> MilestoneService
-=> EmailService
-⚫ PHASE F — RESILIENCE (rất quan trọng)
-Email fail
-=> EmailJob (DB)
-
-RetryScheduler
-=> retry
-
-RecoverScheduler
-=> fix stuck job
+    + Vai trò: + Detect job bị "kẹt" (do crash / timeout)
+               + Reset để retry tiếp
+               + Đảm bảo system không bị dead job

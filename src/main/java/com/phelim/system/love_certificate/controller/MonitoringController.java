@@ -4,7 +4,7 @@ import com.phelim.system.love_certificate.constant.BaseConstants;
 import com.phelim.system.love_certificate.dto.feignclient.LoveCertificateResponse;
 import com.phelim.system.love_certificate.dto.monitoring.CircuitBreakerInfo;
 import com.phelim.system.love_certificate.dto.monitoring.RetryInfo;
-import com.phelim.system.love_certificate.service.application.MonitoringService;
+import com.phelim.system.love_certificate.service.monitoring.MonitoringService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

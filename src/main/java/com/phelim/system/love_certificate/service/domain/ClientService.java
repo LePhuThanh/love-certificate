@@ -39,6 +39,7 @@ public class ClientService {
             if (BaseConstants.TEST_ENVIRONMENT.equalsIgnoreCase(environment)){
                 // TEST Resilience (Retry + Circuit-breaker)
                 if (phoneNumber.equals("0338889999")) {
+                    log.info("[ClientService][sendOtp] TEST environment - Skip sending SMS");
                     throw new SimulatedTimeoutException();
                 }
                 log.info("[OtpService][sendOtp] TEST environment - Skip sending SMS");
