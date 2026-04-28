@@ -1,4 +1,4 @@
-package com.phelim.system.love_certificate.dto;
+package com.phelim.system.love_certificate.dto.ratelimit;
 
 import lombok.*;
 

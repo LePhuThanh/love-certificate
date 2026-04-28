@@ -18,7 +18,6 @@ import com.phelim.system.love_certificate.repository.CertificateSessionRepositor
 import com.phelim.system.love_certificate.repository.CertificateVerifyLogRepository;
 import com.phelim.system.love_certificate.repository.LoveStoryRepository;
 import com.phelim.system.love_certificate.service.domain.*;
-import com.phelim.system.love_certificate.service.ratelimit.OtpRateLimitService;
 import com.phelim.system.love_certificate.util.LoveCertificateUtil;
 import com.phelim.system.love_certificate.util.PhoneNumberNormalizer;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import com.phelim.system.love_certificate.service.domain.ratelimit.OtpRateLimitService;
 
 import java.io.IOException;
 import java.nio.file.Files;
