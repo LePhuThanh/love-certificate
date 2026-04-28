@@ -77,7 +77,7 @@ public class CertificateController {
     public LoveCertificateResponse<SendOtpResponse> sendOtp(@Valid @RequestBody GenerateRequest req, HttpServletRequest httpRequest) {
 
         RequestIdValidator.sync(httpRequest, req);
-        certificateService.sendOtp(req);
+        certificateService.sendOtp(req, httpRequest);
 
         return LoveCertificateResponse.success(
                 req.getRequestId(),

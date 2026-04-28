@@ -68,7 +68,7 @@ public class OtpService {
      * circuit open
      */
     public void fallbackSendOtp(String phoneNumber, String otp, Throwable ex) {
-        log.error("[OtpService][fallbackSendOtp] SMS failed because SMS service unavailable phoneNumber={}", phoneNumber, ex);
+        log.error("[OtpService][fallbackSendOtp] SMS failed because SMS service unavailable phoneNumber={}, otp={}", phoneNumber, otp, ex);
         throw new BusinessException(ErrorCode.SMS_FAILED, "phoneNumber=" + phoneNumber);
     }
 

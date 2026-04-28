@@ -54,7 +54,11 @@ public enum ErrorCode {
 
     MAX_RETRY_EXCEEDED("FC110","Exceeded the number of OTP retry."),
 
-    SMS_FAILED("FC110", "Failed to send OTP. Please try again later"),
+    SMS_FAILED("FC110", "SMS failed because SMS service unavailable. Please try again later"),
+
+    TOO_MANY_REQUEST("429", "Rate limit exceeded"),
+    OTP_COOLDOWN("430", "Please wait before requesting another OTP"),
+    OTP_MAX_ATTEMPT("431", "Maximum OTP attempts exceeded"),
 
     IDENTIFICATION_INVALID_FORMAT("FC110", "Identification invalid format"),
     PHONE_MISMATCH("FC110", "Phone number mismatch the core session phone number");

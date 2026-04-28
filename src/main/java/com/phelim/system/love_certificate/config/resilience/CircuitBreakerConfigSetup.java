@@ -1,5 +1,6 @@
 package com.phelim.system.love_certificate.config.resilience;
 
+import com.phelim.system.love_certificate.enums.CircuitName;
 import com.phelim.system.love_certificate.exception.BusinessException;
 import com.phelim.system.love_certificate.exception.SimulatedTimeoutException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
@@ -20,15 +21,24 @@ public class CircuitBreakerConfigSetup {
     // =========================
     // CIRCUIT BREAKER
     // =========================
+    /**
+     * Request
+     *    ↓
+     * Retry attempts (3 times)
+     *    ↓
+     * FINAL RESULT (SUCCESS / FAILURE)
+     *    ↓
+     * CircuitBreaker record (1 time)
+     */
     @Bean
     public CircuitBreakerRegistry circuitBreakerRegistry() {
 
         // Default config
         CircuitBreakerConfig defaultConfig = CircuitBreakerConfig.custom()
                 .slidingWindowSize(10)
-                .failureRateThreshold(80)
+                .failureRateThreshold(50)
                 .minimumNumberOfCalls(5)
-                .waitDurationInOpenState(Duration.ofSeconds(10))
+                .waitDurationInOpenState(Duration.ofSeconds(15))
 
                 // Count all exceptions as failures
                 .recordExceptions(Exception.class)
@@ -42,10 +52,10 @@ public class CircuitBreakerConfigSetup {
 
         // ------------------------CREATE INSTANCES------------------------
         // Default instance
-        CircuitBreaker defaultCb = registry.circuitBreaker("defaultCircuit", defaultConfig);
+        CircuitBreaker defaultCb = registry.circuitBreaker(CircuitName.DEFAULT.getName(), defaultConfig);
 
         // SMS circuit
-        CircuitBreaker smsCb = registry.circuitBreaker("smsCircuit", CircuitBreakerConfig.custom()
+        CircuitBreaker smsCb = registry.circuitBreaker(CircuitName.SMS.getName(), CircuitBreakerConfig.custom()
                 .slidingWindowSize(10)
                 .failureRateThreshold(80)
                 .minimumNumberOfCalls(2)
@@ -60,7 +70,7 @@ public class CircuitBreakerConfigSetup {
         );
 
         // Payment circuit
-        CircuitBreaker paymentCb = registry.circuitBreaker("paymentCircuit", CircuitBreakerConfig.custom()
+        CircuitBreaker paymentCb = registry.circuitBreaker(CircuitName.PAYMENT.getName(), CircuitBreakerConfig.custom()
                 .slidingWindowSize(5)
                 .failureRateThreshold(50)
                 .minimumNumberOfCalls(3)

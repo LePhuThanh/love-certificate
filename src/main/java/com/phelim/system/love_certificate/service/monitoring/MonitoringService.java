@@ -1,4 +1,4 @@
-package com.phelim.system.love_certificate.service.application;
+package com.phelim.system.love_certificate.service.monitoring;
 
 import com.phelim.system.love_certificate.dto.monitoring.CircuitBreakerInfo;
 import com.phelim.system.love_certificate.dto.monitoring.RetryInfo;
