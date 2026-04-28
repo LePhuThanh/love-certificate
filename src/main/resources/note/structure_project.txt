@@ -1,4 +1,4 @@
-Updated by Phelim (20/04/2026)
+Updated by Phelim (28/04/2026)
 src.main.java
           com.phelim.system.love_certificate
                 aop
@@ -84,6 +84,8 @@ src.main.java
                    RateLimitType
                    Region
                    RetryName
+                   VerificationType
+                   VerifySource
                    VerifyType
                 exception
                    BusinessException
@@ -111,9 +113,9 @@ src.main.java
                 service
                    application
                       CertificateApplicationService
+                      CertificateQueryService
                       CertificateService
                       CertificateServiceImpl
-                      MonitoringService
                    domain
                        ratelimit
                                 OtpRateLimitService
@@ -165,6 +167,7 @@ src.main.java
              business_context.txt
              feature.txt
              generate_key.txt
+             structure_project.txt
              system_workflow.txt
           sql
              rule_config.sql

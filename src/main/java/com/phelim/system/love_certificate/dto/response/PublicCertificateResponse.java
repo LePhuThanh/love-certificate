@@ -13,20 +13,22 @@ public class PublicCertificateResponse {
 
     private String certId;
 
-    // 🔥 VERIFY
+    private boolean qrValid;
+
+    // Verify
     private boolean valid;
     private String status; // VALID / TAMPERED
 
-    // 🔥 STORY
+    // Story
     private String loveStory;
 
-    // 🔥 TRUST
+    // Trust
     private int trustScore;
     private String trustLevel;
 
     private boolean revoked;
     private List<LoveStoryResponse> storyHistory;
 
-    // 🔥 TIMELINE
+    // Timeline
     private CertificateTimelineResponse timeline;
 }

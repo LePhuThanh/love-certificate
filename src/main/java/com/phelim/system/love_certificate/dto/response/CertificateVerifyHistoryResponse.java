@@ -1,5 +1,6 @@
 package com.phelim.system.love_certificate.dto.response;
 
+import com.phelim.system.love_certificate.enums.VerificationType;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -14,7 +15,7 @@ public class CertificateVerifyHistoryResponse {
 
     private String certId;
 
-    private int total; // tổng số lần verify
+    private int total; // total of verify
 
     private List<VerifyLogItem> logs;
 
@@ -25,7 +26,7 @@ public class CertificateVerifyHistoryResponse {
     @AllArgsConstructor
     public static class VerifyLogItem {
 
-        private String method;      // HASH / RSA
+        private VerificationType method;      // HASH | RSA | QR
         private String result;      // VALID / INVALID
         private String ip;          // IP user
         private String userAgent;   // browser / device

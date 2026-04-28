@@ -14,7 +14,10 @@ public interface CertificateService {
     void sendOtp(GenerateRequest req, HttpServletRequest httpRequest);
     void verifyOtp(VerifyOtpRequest req);
     CertificateStatusResponse getCertificateStatus(String sessionId);
-    PublicCertificateResponse getPublicCertificate(String certId);
+    PublicCertificateResponse getPublicCertificate(String certId,
+                                                   Long timestamp,
+                                                   String signature,
+                                                   HttpServletRequest request);
 
     VerifyPdfResponse verifyByHash(String certId, HttpServletRequest request);
     VerifyPdfResponse verifyPdfByRsaSignature(String certId, HttpServletRequest request);
