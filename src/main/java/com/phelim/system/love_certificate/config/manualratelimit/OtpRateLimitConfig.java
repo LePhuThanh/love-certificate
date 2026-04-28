@@ -1,6 +1,6 @@
-package com.phelim.system.love_certificate.service.ratelimit;
+package com.phelim.system.love_certificate.config.manualratelimit;
 
-import com.phelim.system.love_certificate.dto.RateLimitRule;
+import com.phelim.system.love_certificate.dto.ratelimit.RateLimitRule;
 import com.phelim.system.love_certificate.enums.RateLimitType;
 import lombok.Getter;
 import org.springframework.stereotype.Component;

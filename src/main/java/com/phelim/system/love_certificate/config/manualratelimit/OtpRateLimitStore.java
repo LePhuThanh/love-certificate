@@ -1,6 +1,6 @@
-package com.phelim.system.love_certificate.service.ratelimit;
+package com.phelim.system.love_certificate.config.manualratelimit;
 
-import com.phelim.system.love_certificate.dto.RateLimitInfo;
+import com.phelim.system.love_certificate.dto.ratelimit.RateLimitInfo;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ConcurrentHashMap;
