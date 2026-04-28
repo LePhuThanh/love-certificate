@@ -18,6 +18,7 @@ public class RuleConfig {
 
     @Column(name = "min_days")
     private int minDays;
+    @Enumerated(EnumType.STRING)
     @Column(name = "type")
     private CertificateType type;
 }

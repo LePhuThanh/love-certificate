@@ -124,11 +124,14 @@ public class CertificateController {
                 .body(resource);
     }
 
+    // 1 API => 2 Module
     @GetMapping("/v1/public/cert/{certId}")
     public LoveCertificateResponse<PublicCertificateResponse> getPublicCertificate(@PathVariable(name = "certId") String certId,
+                                                                                   @RequestParam(name = "qrTimestamp", required = false) Long timestamp,
+                                                                                   @RequestParam(name = "qrSignature", required = false) String signature,
                                                                                    HttpServletRequest request) {
         String requestId = (String) request.getAttribute(BaseConstants.REQUEST_ID);
-        PublicCertificateResponse res = certificateService.getPublicCertificate(certId);
+        PublicCertificateResponse res = certificateService.getPublicCertificate(certId, timestamp, signature, request);
 
         return LoveCertificateResponse.success(requestId, res);
     }

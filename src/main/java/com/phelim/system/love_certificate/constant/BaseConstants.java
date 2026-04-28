@@ -39,6 +39,7 @@ public final class BaseConstants {
 
     public static final String VALID = "VALID";
     public static final String INVALID = "INVALID";
+    public static final String UNVERIFIED = "UNVERIFIED";
 
     public static final String TAMPERED = "TAMPERED";
     public static final String REVOKED = "REVOKED";
@@ -51,6 +52,7 @@ public final class BaseConstants {
 
     public static final String ALGORITHM_SHA256_WITH_RSA = "SHA256withRSA";
     public static final String RSA = "RSA";
+    public static final String QR = "QR";
 
     public static final String PRIVATE_KEY_PEM = "private_key.pem";
     public static final String PUBLIC_KEY_PEM = "public_key.pem";

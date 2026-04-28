@@ -8,9 +8,7 @@ import com.phelim.system.love_certificate.entity.Certificate;
 import com.phelim.system.love_certificate.entity.CertificateSession;
 import com.phelim.system.love_certificate.entity.CertificateVerifyLog;
 import com.phelim.system.love_certificate.entity.LoveStory;
-import com.phelim.system.love_certificate.enums.CertSessionStatus;
-import com.phelim.system.love_certificate.enums.CertificateType;
-import com.phelim.system.love_certificate.enums.VerifyType;
+import com.phelim.system.love_certificate.enums.*;
 import com.phelim.system.love_certificate.exception.BusinessException;
 import com.phelim.system.love_certificate.exception.ErrorCode;
 import com.phelim.system.love_certificate.repository.CertificateRepository;
@@ -18,6 +16,7 @@ import com.phelim.system.love_certificate.repository.CertificateSessionRepositor
 import com.phelim.system.love_certificate.repository.CertificateVerifyLogRepository;
 import com.phelim.system.love_certificate.repository.LoveStoryRepository;
 import com.phelim.system.love_certificate.service.domain.*;
+import com.phelim.system.love_certificate.service.domain.ratelimit.OtpRateLimitService;
 import com.phelim.system.love_certificate.util.LoveCertificateUtil;
 import com.phelim.system.love_certificate.util.PhoneNumberNormalizer;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -35,16 +33,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.util.HtmlUtils;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import com.phelim.system.love_certificate.service.domain.ratelimit.OtpRateLimitService;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +68,7 @@ public class CertificateServiceImpl implements CertificateService {
     private final LoveCertificateProperties loveCertificateProperties;
     private final CertificateAsyncService certAsyncService;
     private final OtpRateLimitService otpRateLimitService;
+    private final CertificateQueryService certificateQueryService;
 
     private final CacheManager cacheManager;
 
@@ -300,15 +301,12 @@ public class CertificateServiceImpl implements CertificateService {
         session.setStatus(CertSessionStatus.OTP_VERIFIED);
         sessionRepo.save(session);
 
-
         /** Cmt by Pheim (13/04/2026)
-         * Only call generateAsync AFTER the transaction verifyOtp COMMIT is successful.
-
+         * I. Only call generateAsync AFTER the transaction verifyOtp COMMIT is successful.
          * If you call it directly: certAsyncService.generateAsync(sessionId);
          * => then async might run when:
          * 1. the transaction verifyOtp is not committed
          * 2. or is rolled back
-
          * USE afterCommit
          * verifyOtp()
          *    ↓
@@ -317,8 +315,7 @@ public class CertificateServiceImpl implements CertificateService {
          * afterCommit() trigger
          *    ↓
          * @Async run
-         */
-        /**
+         * II.
          * It only changes the timing of the call, not the async nature of the call.
          * Can use Spring event (@TransactionalEventListener(phase = AFTER_COMMIT)), message queue (Kafka/RabbitMQ) in the future
          */
@@ -359,96 +356,98 @@ public class CertificateServiceImpl implements CertificateService {
         Certificate cert = certRepo.findBySessionId(sessionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.DATA_NOT_FOUND, "Certificate not found", "sessionId=" + sessionId));
 
+        // Generate dynamic QR ONLY for testing / FE
+        long qrTimestamp = Instant.now().getEpochSecond();
+        String payload = cert.getCertId() + "|" + qrTimestamp;
+        String qrSignature = rsaSignatureService.sign(payload.getBytes());
+        String encodedSig = URLEncoder.encode(qrSignature, StandardCharsets.UTF_8);
+
+        String publicCertUrl = "http://localhost:8080/core/love-certificates/v1/public/cert/"
+                + cert.getCertId()
+                + "?qrTimestamp=" + qrTimestamp
+                + "&qrSignature=" + encodedSig;
+
         return CertificateStatusResponse.builder()
                 .sessionId(sessionId)
                 .certId(cert.getCertId())
                 .status(session.getStatus())
                 .fileUrl(cert.getFileUrl())
+                .publicCertUrl(publicCertUrl)
                 .retryAfter(null) // no longer needed
                 .build();
     }
 
-    /** Cmt by Phelim (10.04.2026)
-     * value = "publicCert" => primary cache for public page
-     * key = "'cert:' + #certId" => avoids collisions (later Redis scaling)
-     * sync = true, avoids: 1000 requests => MISS => runs RSA 1000 times => only 1 thread loads, the rest wait
-     * Cache is here because this method: reading the file (Files.readAllBytes) is I/O heavy, verifying RSA is CPU heavy, calling getTrustScore() + getTimeline() => this is an aggregation endpoint => extremely heavy
+    /** Cmt by Phelim (28/04/2026)
+     * PUBLIC CERTIFICATE FLOW
+     * [1] VERIFY QR SIGNATURE (ENTRY TRUST)
+     *     - validate certId + timestamp
+     *     - ensures QR is generated by system (anti-fake QR)
+     *     - NOTE:
+     *         + If qrTimestamp & qrSignature present → verify RSA(certId|timestamp, signature)
+     *         + If missing (scan from PDF static QR) → skip verification, treat as trusted entry
+     * [2] LOAD CERTIFICATE DATA (CACHEABLE)
+     *     - heavy operation:
+     *         + read file (I/O)
+     *         + verify RSA file signature (CPU)
+     *         + aggregate story + trustScore + timeline
+     *     - protected by @Cacheable (avoid repeated heavy computation)
+     * [3] LOG VERIFY (ALWAYS EXECUTED)
+     *     - store timestamp, ip, fingerprint, userAgent
+     *     - used for:
+     *         + trust score calculation
+     *         + fraud detection (replay / bot / abuse)
+     * => DESIGN NOTES:
+     * - QR in PDF is STATIC (only contains certId)
+     * - Signed QR (qrTimestamp + qrSignature) is generated at runtime (API / FE)
+     * - QR timestamp is NOT used for blocking (UX-friendly)
+     * - timestamp is used for behavioral analysis only
+     * - cache layer MUST NOT contain logging logic (avoid cache skip)
+     * => SECURITY MODEL (DEFENSE-IN-DEPTH):
+     * - QR Signature  => Entry-point trust (anti-fake QR / fake link)
+     * - RSA File      => Content integrity (anti tampering)
+     * - Verify Log    => Behavior trust (fraud detection)
      */
     @Override
-    @Cacheable(value = BaseConstants.PUBLIC_CERT,
-            key = "'cert:' + #certId",
-            sync = true
-    )
-    public PublicCertificateResponse getPublicCertificate(String certId) {
-        log.info("[CertificateServiceImpl][getPublicCertificate] Start. certId={}", certId);
+    public PublicCertificateResponse getPublicCertificate(String certId, Long timestamp, String signature, HttpServletRequest request) {
+        log.info("[CertificateServiceImpl][getPublicCertificate] Start certId={}", certId);
 
-        Certificate cert = certRepo.findById(certId)
-                .orElseThrow(() -> {
-                    log.warn("[CertificateServiceImpl][getPublicCertificate] Not found certId={}", certId);
-                    return new BusinessException(ErrorCode.DATA_NOT_FOUND, "certId=" + certId);
-                });
-
-        // 1. VERIFY (AUTO RSA)
-        boolean valid = false;
-        try {
-            byte[] fileBytes = Files.readAllBytes(Path.of(cert.getFileUrl()));
-            valid = rsaSignatureService.verify(fileBytes, cert.getSignature());
-        } catch (Exception e) {
-            log.warn("[CertificateServiceImpl][getPublicCertificate] Verify failed certId={}", certId, e);
+        // 1. Verify qr signature (anti-fake)
+        boolean qrValid = false;
+        if (timestamp != null && signature != null) {
+            qrValid = verifyQr(certId, timestamp, signature);
+        } else {
+            // scan from PDF => no signature
+            qrValid = true;
         }
-        String status = valid ? BaseConstants.VALID : BaseConstants.TAMPERED;
 
-        // 2. STORY (CURRENT)
-        String sessionId = cert.getSessionId();
-        String story = loveStoryRepository.findBySessionIdAndActiveTrue(sessionId)
-                .map(LoveStory::getContent)
-                .orElse(null);
+        // 2. Load data (cache)
+        PublicCertificateResponse response  = certificateQueryService.getPublicCertificateData(certId);
 
-        // 3. STORY HISTORY
-        List<LoveStoryResponse> storyHistory = loveStoryRepository
-                .findBySessionIdOrderByVersionDesc(sessionId)
-                .stream()
-                .map(s -> LoveStoryResponse.builder()
-                        .sessionId(s.getSessionId())
-                        .content(s.getContent())
-                        .version(s.getVersion())
-                        .updatedAt(s.getUpdatedAt())
-                        .build())
-                .toList();
+        // 3. Log verify (always run)
+        verifyLogService.logVerify(certId, timestamp, VerificationType.QR, response.getStatus(), VerifySource.PUBLIC_QR, request);
 
-        // 4. TRUST SCORE
-        CertificateTrustScoreResponse trust = trustService.getTrustScore(certId);
-
-        // 5. TIMELINE
-        CertificateTimelineResponse timeline = timelineService.getTimeline(certId);
-        return PublicCertificateResponse.builder()
-                .certId(certId)
-                .valid(valid)
-                .status(status)
-                .loveStory(story)
-                .trustScore(trust.getScore())
-                .trustLevel(trust.getLevel().name())
-                .revoked(Boolean.TRUE.equals(cert.getRevoked()))
-                .storyHistory(storyHistory)
-                .timeline(timeline)
-                .build();
+        // Attach qrValid
+        response.setQrValid(qrValid);
+        return response;
     }
 
     // HASH VERIFY
     @Override
     public VerifyPdfResponse verifyByHash(String certId, HttpServletRequest request) {
-        log.info("[CertificateVerifyService][verifyByHash] Start certId={}", certId);
+        log.info("[CertificateServiceImpl][verifyByHash] Start certId={}", certId);
 
         Certificate cert = certRepo.findById(certId)
                 .orElseThrow(() -> {
-                    log.warn("[CertificateVerifyService][verifyByHash] Not found certId={}", certId);
+                    log.warn("[CertificateServiceImpl][verifyByHash] Not found certId={}", certId);
                     return new BusinessException(ErrorCode.SESSION_NOT_FOUND, "certId=" + certId);
                 });
 
         // 1. Check revoked
         boolean isRevoked = Boolean.TRUE.equals(cert.getRevoked());
+        long timestamp = Instant.now().getEpochSecond();
+
         if (isRevoked) {
-            return buildRevokedResponse(certId, VerifyType.HASH, request);
+            return buildRevokedResponse(certId, timestamp, BaseConstants.UNVERIFIED, VerifyType.HASH, request);
         }
 
         try {
@@ -457,8 +456,9 @@ public class CertificateServiceImpl implements CertificateService {
             String actualHash = hashSignatureService.hash(fileBytes);
             boolean valid = actualHash.equals(cert.getFileHash());
 
+            String result = valid ? BaseConstants.VALID : BaseConstants.INVALID;
             // log
-            verifyLogService.logVerify(certId, BaseConstants.HASH, valid, request);
+            verifyLogService.logVerify(certId, timestamp, VerificationType.HASH, result, VerifySource.VERIFY_HASH_API, request);
 
             return VerifyPdfResponse.builder()
                     .certId(certId)
@@ -471,7 +471,7 @@ public class CertificateServiceImpl implements CertificateService {
                     .build();
 
         } catch (IOException ex) {
-            log.error("[CertificateVerifyService][verifyByHash] File read failed certId={}", certId, ex);
+            log.error("[CertificateServiceImpl][verifyByHash] File read failed certId={}", certId, ex);
             throw new BusinessException(ErrorCode.FILE_READ_FAILED, "certId=" + certId);
         }
     }
@@ -479,18 +479,20 @@ public class CertificateServiceImpl implements CertificateService {
     // RSA VERIFY
     @Override
     public VerifyPdfResponse verifyPdfByRsaSignature(String certId, HttpServletRequest request) {
-        log.info("[CertificateVerifyService][verifyPdfByRsaSignature] certId={}", certId);
+        log.info("[CertificateServiceImpl][verifyPdfByRsaSignature] certId={}", certId);
 
         Certificate cert = certRepo.findById(certId)
                 .orElseThrow(() -> {
-                    log.warn("[CertificateVerifyService][verifyPdfByRsaSignature] Not found certId={}", certId);
+                    log.warn("[CertificateServiceImpl][verifyPdfByRsaSignature] Not found certId={}", certId);
                     return new BusinessException(ErrorCode.SESSION_NOT_FOUND, "certId=" + certId);
                 });
 
         // 1. Check revoked
         boolean isRevoked = Boolean.TRUE.equals(cert.getRevoked());
+        long timestamp = Instant.now().getEpochSecond();
+
         if (isRevoked) {
-            return buildRevokedResponse(certId, VerifyType.RSA, request);
+            return buildRevokedResponse(certId, timestamp, BaseConstants.UNVERIFIED, VerifyType.RSA, request);
         }
 
         try {
@@ -498,8 +500,9 @@ public class CertificateServiceImpl implements CertificateService {
 
             boolean valid = rsaSignatureService.verify(fileBytes, cert.getSignature());
 
+            String result = valid ? BaseConstants.VALID : BaseConstants.INVALID;
             // log
-            verifyLogService.logVerify(certId, BaseConstants.RSA, valid, request);
+            verifyLogService.logVerify(certId, timestamp, VerificationType.RSA, result, VerifySource.VERIFY_RSA_API, request);
 
             return VerifyPdfResponse.builder()
                     .certId(certId)
@@ -511,7 +514,7 @@ public class CertificateServiceImpl implements CertificateService {
                     .build();
 
         } catch (IOException ex) {
-            log.error("[CertificateVerifyService][verifyPdfByRsaSignature] File read failed certId={}", certId, ex);
+            log.error("[CertificateServiceImpl][verifyPdfByRsaSignature] File read failed certId={}", certId, ex);
             throw new BusinessException(ErrorCode.FILE_READ_FAILED, "certId=" + certId);
         }
     }
@@ -526,19 +529,19 @@ public class CertificateServiceImpl implements CertificateService {
     })
     @Transactional
     public CertificateRevokeResponse revoke(CertificateRevokeRequest request) {
-        log.info("[CertificateRevocationService][revoke] requestId={}, certId={}",
+        log.info("[CertificateServiceImpl][revoke] requestId={}, certId={}",
                 request.getRequestId(), request.getCertId());
 
         Certificate cert = certRepo.findById(request.getCertId())
                 .orElseThrow(() -> {
-                    log.warn("[CertificateRevocationService][revoke] Not found certId={}", request.getCertId());
+                    log.warn("[CertificateServiceImpl][revoke] Not found certId={}", request.getCertId());
                     return new BusinessException(ErrorCode.DATA_NOT_FOUND, "certId=" + request.getCertId());
                 });
 
         // Idempotent
         if (Boolean.TRUE.equals(cert.getRevoked())) {
 
-            log.info("[CertificateRevocationService][revoke] Already revoked certId={}", cert.getCertId());
+            log.info("[CertificateServiceImpl][revoke] Already revoked certId={}", cert.getCertId());
 
             return CertificateRevokeResponse.builder()
                     .requestId(request.getRequestId())
@@ -555,7 +558,7 @@ public class CertificateServiceImpl implements CertificateService {
         cert.setRevokedReason(request.getReason());
 
         // JPA auto flush
-        log.info("[CertificateRevocationService][revoke] Success certId={}", cert.getCertId());
+        log.info("[CertificateServiceImpl][revoke] Success certId={}", cert.getCertId());
 
         return CertificateRevokeResponse.builder()
                 .requestId(request.getRequestId())
@@ -568,13 +571,13 @@ public class CertificateServiceImpl implements CertificateService {
 
     @Override
     public CertificateVerifyHistoryResponse getVerifyCertificateHistory(String certId) {
-        log.info("[CertificateVerifyHistoryService][getVerifyCertificateHistory] certId={}", certId);
+        log.info("[CertificateServiceImpl][getVerifyCertificateHistory] certId={}", certId);
 
         List<CertificateVerifyLog> logs = cerVerifyLogRepository.findByCertIdOrderByVerifiedAtDesc(certId);
 
         List<CertificateVerifyHistoryResponse.VerifyLogItem> items = logs.stream()
                 .map(log -> CertificateVerifyHistoryResponse.VerifyLogItem.builder()
-                        .method(log.getMethod())
+                        .method(log.getVerificationMethod())
                         .result(log.getResult())
                         .ip(LoveCertificateUtil.maskIp(log.getIpAddress()))
                         .userAgent(log.getUserAgent())
@@ -619,7 +622,7 @@ public class CertificateServiceImpl implements CertificateService {
      */
     @Override
     public LoveStoryResponse upsertLoveStory(LoveStoryRequest request) {
-        log.info("[CertificateService][upsertLoveStory] Start. sessionId={}", request.getSessionId());
+        log.info("[CertificateServiceImpl][upsertLoveStory] Start. sessionId={}", request.getSessionId());
 
         // Validation + sanitize
         String content = request.getContent();
@@ -638,7 +641,7 @@ public class CertificateServiceImpl implements CertificateService {
 
         Optional<Certificate> certOpt = certRepo.findBySessionId(request.getSessionId());
         if (certOpt.isPresent() && Boolean.TRUE.equals(certOpt.get().getRevoked())) {
-            log.warn("[CertificateService][upsertLoveStory] Cannot update. Certificate revoked certId={}", certOpt.get().getCertId());
+            log.warn("[CertificateServiceImpl][upsertLoveStory] Cannot update. Certificate revoked certId={}", certOpt.get().getCertId());
             throw new BusinessException(ErrorCode.CERTIFICATE_REVOKED, "certId=" + certOpt.get().getCertId());
         }
 
@@ -763,16 +766,23 @@ public class CertificateServiceImpl implements CertificateService {
         return BaseConstants.PREFIX_LOVE_STORY_ID + System.currentTimeMillis();
     }
 
-    private VerifyPdfResponse buildRevokedResponse(String certId, VerifyType type, HttpServletRequest request) {
+    private VerifyPdfResponse buildRevokedResponse(String certId, long timestamp, String result, VerifyType type, HttpServletRequest request) {
         log.warn("[CertificateServiceImpl][buildRevokedResponse] Certificate revoked certId={}", certId);
 
-        verifyLogService.logVerify(certId, type == VerifyType.HASH ? BaseConstants.HASH : BaseConstants.RSA,
-                false,
-                request);
+        VerificationType method;
+        if(type.name().equals(BaseConstants.RSA)){
+            method = VerificationType.RSA;
+        }else if(type.name().equals(BaseConstants.HASH)) {
+            method = VerificationType.HASH;
+        }else {
+            method = null;
+        }
+
+        verifyLogService.logVerify(certId, timestamp, method, result, VerifySource.REVOKED_CHECK, request);
         return VerifyPdfResponse.builder()
                 .certId(certId)
                 .method(type)
-                .status(BaseConstants.TAMPERED)
+                .status(BaseConstants.REVOKED)
                 .valid(false)
                 .verifiedAt(LocalDateTime.now())
                 .build();
@@ -794,6 +804,29 @@ public class CertificateServiceImpl implements CertificateService {
             return request.getRemoteAddr();
         }
         // In case a proxy is used (nginx, gateway)
-        return xfHeader.split(",")[0];
+        return xfHeader.split(",")[0].trim();
     }
+
+    private boolean verifyQr(String certId, long timestamp, String signature) {
+        try {
+            if (signature == null || signature.isBlank()) {
+                log.warn("[CertificateServiceImpl][verifyQr] Missing QR signature certId={}", certId);
+                throw new BusinessException(ErrorCode.INVALID_QR, "Missing signature");
+            }
+
+            String decodedSig = URLDecoder.decode(signature, StandardCharsets.UTF_8);
+            String payload = certId + "|" + timestamp;
+
+            boolean valid = rsaSignatureService.verify(payload.getBytes(), decodedSig);
+            if (!valid) {
+                log.warn("[CertificateServiceImpl][verifyQr] Invalid QR signature certId={}", certId);
+                throw new BusinessException(ErrorCode.INVALID_QR, "certId=" + certId);
+            }
+            return true;
+        } catch (Exception ex) {
+            log.warn("[CertificateServiceImpl][verifyQr] QR verify failed certId={}", certId, ex);
+            throw new BusinessException(ErrorCode.INVALID_QR, "certId=" + certId);
+        }
+    }
+
 }

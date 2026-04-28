@@ -1,4 +1,4 @@
-Updated by Phelim (15/04/2026)
+Updated by Phelim (28/04/2026)
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 🔥 1. GENERATE FLOW
 Step    API
@@ -11,7 +11,8 @@ GENERATE ASYNC  (internal @Async trong API4)
 
 🔥 2. STATUS FLOW
 Step    API
-CHECK STATUS    http://localhost:8080/core/love-certificates/v1/status/CS_D85650E4
+CHECK STATUS    http://localhost:8080/core/love-certificates/v1/status/CS_D85650E4 or
+                http://localhost:8080/core/love-certificates/v1/status/CS_D85650E4?qrTimestamp=qrTimestamp&qrSignature=qrSignature
 DOWNLOAD FILE   http://localhost:8080/core/love-certificates/v1/certificates/CS_D85650E4/download
 
 🔥 3. PUBLIC FLOW (CORE)

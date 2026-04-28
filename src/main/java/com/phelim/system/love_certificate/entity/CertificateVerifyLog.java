@@ -1,7 +1,10 @@
 package com.phelim.system.love_certificate.entity;
 
+import com.phelim.system.love_certificate.enums.VerificationType;
+import com.phelim.system.love_certificate.enums.VerifySource;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -24,13 +27,13 @@ public class CertificateVerifyLog {
     @Column(name = "certId")
     private String certId;
 
-    @NotBlank(message = "method is required")
-    @Column(name = "method")
-    private String method; // HASH / RSA
+    @NotNull(message = "verificationMethod is required")
+    @Column(name = "verification_method")
+    private VerificationType verificationMethod; // HASH | RSA | QR
 
     @NotBlank(message = "result is required")
     @Column(name = "result")
-    private String result; // VALID / INVALID
+    private String result; // VALID | INVALID | UNVERIFIED
 
     @Column(name = "ip_hash")
     private String ipHash;
@@ -44,4 +47,11 @@ public class CertificateVerifyLog {
 
     @Column(name = "verified_at")
     private LocalDateTime verifiedAt;
+
+    @Column(name = "qr_timestamp")
+    private Long timestamp;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verify_source")
+    private VerifySource verifySource;
 }
