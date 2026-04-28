@@ -16,7 +16,7 @@ public class VerifyPdfResponse {
     private String certId;
 
     private VerifyType method; // HASH | RSA
-    private String status; // VALID | TAMPERED
+    private String status; // VALID | TAMPERED | REVOKED
 
     private boolean valid;
 

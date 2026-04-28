@@ -1,10 +1,7 @@
 package com.phelim.system.love_certificate.entity;
 
 import com.phelim.system.love_certificate.enums.CertificateType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 import jakarta.validation.constraints.NotNull;
@@ -31,6 +28,7 @@ public class Certificate {
 
     @Column(name = "duration_days")
     private int durationDays;
+    @Enumerated(EnumType.STRING)
     @Column(name = "type")
     @NotNull(message = "type is required")
     private CertificateType type; // A, B, C

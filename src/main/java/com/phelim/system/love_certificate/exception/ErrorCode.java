@@ -19,6 +19,8 @@ public enum ErrorCode {
     TEMPLATE_RENDER_FAILED("LC502", "Template render failed"),
     INVALID_STATE("LC502", "Invalid the Certificate Session's state"),
 
+    INVALID_QR("LC401", "Invalid QR signature"),
+
     SIGNATURE_VERIFY_FAILED("LC502", "Failed to verify signature"),
     SIGNATURE_SIGN_FAILED("LC502", "Failed to sign data"),
     PDF_GENERATION_FAILED("LC502", "PDF generation failed"),

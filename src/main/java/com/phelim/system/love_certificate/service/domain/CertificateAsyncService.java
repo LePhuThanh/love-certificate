@@ -35,26 +35,38 @@ public class CertificateAsyncService {
     private final RsaSignatureService rsaSignatureService;
 
 
-    /** Cmt by Phelim (13/04/2026)
-     *  => Flow generate certificate (final design)
-
-     *      1. Render HTML draft (QR placeholder)
-     *      2. Generate draft PDF (ensure layout stable)
-     *      3. Build verify URL (no hash, server-side verification)
-     *      4. Render final HTML with QR (verify endpoint)
-     *      5. Generate final PDF
-     *      6. Compute SHA-256 hash of final PDF (integrity)
-     *      7. Persist file + hash
-
-     *      => Design note:
-     *      - QR only contains certId (no hash)
-     *      - Verification is server-driven (recompute hash from stored file)
-     *      - Avoids double-render dependency between QR and hash
-
-     *      => Security model:
-     *      - File integrity is guaranteed by SHA-256 hash
-     *      - Hash is computed from final persisted PDF
-     *      - Any modification of PDF will break hash equality
+    /** Cmt by Phelim (20/04/2026)
+     * => Flow generate certificate (final design)
+     * 1. Render HTML draft (QR placeholder)
+     * 2. Generate draft PDF (ensure layout stable)
+     * 3. Generate STATIC QR (UPDATED)
+     *    - QR contains ONLY: /public/cert/{certId}
+     *    - No timestamp, no signature embedded in PDF
+     * 4. Render final HTML with STATIC QR
+     * 5. Generate final PDF
+     * 6. Compute SHA-256 hash of final PDF (integrity)
+     * 7. RSA sign final PDF (file-level security)
+     * 8. Persist file + hash + signature
+     * => Runtime verification:
+     * - When user scans QR or FE calls API:
+     *     + system MAY generate:
+     *         qrTimestamp + qrSignature (RSA(certId|timestamp))
+     *     + used for:
+     *         - anti-fake link (entry security)
+     *         - behavior analysis (replay detection)
+     * => Security model:
+     * - STATIC QR          => stable entry point (UX friendly)
+     * - Runtime Signature  => optional entry validation (anti-fake QR)
+     * - RSA file signature => document integrity (anti tampering)
+     * - Hash               => additional integrity layer
+     * => Design note:
+     * - QR in PDF NEVER expires
+     * - Timestamp is NOT stored, NOT embedded in PDF
+     * - Signature is generated dynamically at runtime
+     * => Multi-layer security (defense-in-depth):
+     * - Entry (QR/link)
+     * - Content (PDF)
+     * - Behavior (log + trust score)
      */
     @Async(BaseConstants.EXECUTOR_ASYNC_GENERATE_CER)
     @Transactional
@@ -98,11 +110,11 @@ public class CertificateAsyncService {
             String htmlDraft = templateService.renderCertificate(cert, session, BaseConstants.DUMMY);
             byte[] draftPdf = pdfService.generatePdf(htmlDraft);
 
-            // STEP 2: build verifyUrl
-            String verifyUrl = "http://localhost:8080/core/love-certificates/v1/public/cert/" + certId;
+            // STEP 2: build static QR URL
+            String publicCertUrl = "http://localhost:8080/core/love-certificates/v1/public/cert/" + certId;
 
             // STEP 3: re-render HTML FINAL + generate PDF FINAL
-            String finalHtml = templateService.renderCertificate(cert, session, verifyUrl);
+            String finalHtml = templateService.renderCertificate(cert, session, publicCertUrl);
             byte[] finalPdf = pdfService.generatePdf(finalHtml);
 
             // STEP 4: HASH FINAL PDF

@@ -1,14 +1,4 @@
-5. 🔗 SHAREABLE LINK (SOCIAL CORE)
-🎯 Idea:
 
-User share link như:
-
-https://love.app/cert/ABC123
-💥 Upgrade:
-🔥 preview (Open Graph)
-title: “💖 Minh & Lan – 365 days of love”
-thumbnail: certificate image
-🧠 Value:
 
 👉 giống:
 Facebook share
@@ -77,20 +67,6 @@ WebSocket thay polling
 
 
 
-2. Bây giờ mới là phần “đắt” nhất: Ý tưởng nâng cấp system 🚀
-
-Tôi sẽ chia theo level:
-
-🔥 LEVEL 1 – Hoàn thiện sản phẩm (nên làm ngay)
-2. Share certificate
-GET /v1/cert/{certId}/share
-
-👉 trả:
-
-short link
-social meta
-3. Certificate preview public đẹp
-
 👉 hiện tại là JSON → nên có:
 
 HTML landing page
@@ -107,22 +83,11 @@ status: EXPIRED
 👉 thêm:
 
 loveScore (theo thời gian)
-7. Timeline animation
 
-👉 FE call API timeline → render progress
 
-🔥 LEVEL 3 – Trust system (rất xịn)
-8. Fraud detection
 
-Bạn đã có:
 
-"fraud": {
-  "bot": false,
-  "spam": false
-}
-
-👉 nâng cấp:
-
+Schedule quét list 10 cert có trust cao nhất => call => vertx / web socket
 detect IP spam
 detect verify bất thường
 9. Certificate authenticity badge
@@ -131,24 +96,6 @@ HIGH TRUST 🔥
 10. Public trust ranking
 Top 10 love certificates 🔥
 
-👉 cache:
 
-public cert
-timeline
-trust score
-🔥 LEVEL 6 – “Wow factor” (rất đáng showcase)
-17. Time capsule ⏳
 
-👉 user viết message:
-
-"5 năm nữa mở lại"
-18. Anniversary auto-cert 🎉
-👉 mỗi năm:
-auto generate cert mới
-
-3. Kết luận cho bạn
-Những cái bạn hỏi:
-Feature Nên không
-Login   ✅ (admin + dashboard)
-Những cái bạn NÊN làm tiếp ngay:
  

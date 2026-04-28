@@ -60,11 +60,11 @@ public class EmailJob {
 
     //Case lỗi:
     //
-    //Job → PROCESSING
-    //→ server crash
-    //→ job bị kẹt mãi
+    //Job => PROCESSING
+    //=> server crash
+    //=> job bị kẹt mãi
     //
-    //=> Cần: Job PROCESSING quá lâu → reset về FAILED để retry lại
+    //=> Cần: Job PROCESSING quá lâu => reset về FAILED để retry lại
     @Column(name = "processing_at")
     private LocalDateTime processingAt;
 }

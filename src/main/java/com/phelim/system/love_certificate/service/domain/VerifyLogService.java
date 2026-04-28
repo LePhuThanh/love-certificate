@@ -2,6 +2,8 @@ package com.phelim.system.love_certificate.service.domain;
 
 import com.phelim.system.love_certificate.constant.BaseConstants;
 import com.phelim.system.love_certificate.entity.CertificateVerifyLog;
+import com.phelim.system.love_certificate.enums.VerificationType;
+import com.phelim.system.love_certificate.enums.VerifySource;
 import com.phelim.system.love_certificate.repository.CertificateVerifyLogRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -20,10 +22,10 @@ public class VerifyLogService {
     private final HashSignatureService hashSignatureService;
 
     @CacheEvict(
-            value = "trustScore",
+            value = {BaseConstants.TRUST_SCORE, BaseConstants.PUBLIC_CERT},
             key = "'trust:' + #certId"
     )
-    public void logVerify(String certId, String method, boolean valid, HttpServletRequest request) {
+    public void logVerify(String certId, Long timestamp, VerificationType method, String result, VerifySource verifySource, HttpServletRequest request) {
 
         String ip = request.getRemoteAddr();
         String userAgent = request.getHeader(BaseConstants.USER_AGENT);
@@ -33,13 +35,15 @@ public class VerifyLogService {
 
         CertificateVerifyLog log = CertificateVerifyLog.builder()
                 .certId(certId)
-                .method(method)
-                .result(valid ? BaseConstants.VALID : BaseConstants.INVALID)
+                .verificationMethod(method)
+                .result(result)
                 .ipHash(ipHash)
                 .fingerprint(fingerprint)
                 .ipAddress(ip) // debug local
                 .userAgent(userAgent)
                 .verifiedAt(LocalDateTime.now())
+                .timestamp(timestamp)
+                .verifySource(verifySource)
                 .build();
         cerVerifyLogRepository.save(log);
     }

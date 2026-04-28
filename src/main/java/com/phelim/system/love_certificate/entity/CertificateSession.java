@@ -3,10 +3,7 @@ package com.phelim.system.love_certificate.entity;
 import com.phelim.system.love_certificate.enums.CertSessionStatus;
 import com.phelim.system.love_certificate.enums.Region;
 import com.phelim.system.love_certificate.validation.annotation.PhoneNumber;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -50,6 +47,7 @@ public class CertificateSession {
     @NotNull(message = "loveStartDate is required")
     private LocalDate loveStartDate;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private CertSessionStatus status; // DRAFT, OTP_PENDING, VERIFIED, PROCESSING, COMPLETED, OTP_FAILED, FAILED
 
@@ -83,6 +81,7 @@ public class CertificateSession {
     @PhoneNumber(allowInternational = true)
     @Column(name = "phone_number")
     private String phoneNumber;
+    @Enumerated(EnumType.STRING)
     @Column(name = "region")
     @NotNull(message = "region is required")
     private Region region;
