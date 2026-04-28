@@ -1,3 +1,5 @@
+import java.text.SimpleDateFormat
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '4.0.3'
@@ -5,7 +7,7 @@ plugins {
 }
 
 group = 'com.phelim.system'
-version = '0.0.1-SNAPSHOT'
+version new Version('xxx')
 
 java {
 	toolchain {
@@ -93,3 +95,24 @@ dependencyManagement {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+class Version {
+	String thisVersion
+	Date buildTime
+
+	Version(String versionValue) {
+		buildTime = new Date()
+		thisVersion = versionValue.replace('xxx', getTimestamp())
+	}
+
+	String getTimestamp() {
+		def format = new SimpleDateFormat('yyyyMMddHHmmss')
+		format.setCalendar(Calendar.getInstance(TimeZone.getTimeZone('Asia/Ho_Chi_Minh')))
+		return format.format(buildTime)
+	}
+
+	String toString() {
+		thisVersion
+	}
+}
+ 
