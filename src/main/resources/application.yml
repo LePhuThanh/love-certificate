@@ -1,0 +1,67 @@
+##  How does Retry work?
+##  Current thread:
+##      call 1 → fail
+##      sleep 500ms
+##      call 2 → fail
+##      sleep 500ms
+##      call 3 → success
+##  => still the same thread
+#
+# USING FOR ANNOTATION @Retry(name = "smsRetry") + @CircuitBreaker(name = "smsCircuit", fallbackMethod = "fallbackSendOtp")
+#resilience4j:
+#  retry:
+#    instances:
+#      smsRetry:
+#        max-attempts: 3
+#        wait-duration: 500ms
+#        retry-exceptions:
+#          - feign.RetryableException
+#          - java.io.IOException
+#          - com.phelim.system.love_certificate.exception.SimulatedTimeoutException
+#
+#  circuitbreaker:
+#    instances:
+#      smsCircuit:
+#        sliding-window-size: 10
+#        failure-rate-threshold: 80
+#        minimum-number-of-calls: 5
+#        wait-duration-in-open-state: 10s
+#        record-exceptions:
+#          - feign.RetryableException
+#          - java.io.IOException
+#          - com.phelim.system.love_certificate.exception.SimulatedTimeoutException
+#
+#logging:
+#  level:
+#    io.github.resilience4j.retry: DEBUG
+#    io.github.resilience4j.circuitbreaker: DEBUG
+
+
+# USING FOR REDIS SERVER
+#spring:
+#  data:
+#    redis:
+#      host: localhost
+#      port: 6379
+#      timeout: 2000ms
+#      lettuce:
+#        pool:
+#          max-active: 10
+#          max-idle: 5
+#          min-idle: 1
+
+#How to test Redis => Call GET /actuator/health
+# Response:
+#  {
+#  "status": "UP",
+#  "components": {
+#    "redis": {
+#      "status": "UP"
+#    }
+#  }
+#}
+#management:
+#  endpoints:
+#    web:
+#      exposure:
+#        include: health

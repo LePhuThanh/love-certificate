@@ -29,6 +29,7 @@ dependencies {
 
 	// Db
 	runtimeOnly 'com.h2database:h2'
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
 	// Test
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
@@ -76,6 +77,11 @@ dependencies {
 	// Resilience4j core only (NO spring starter)
 	implementation 'io.github.resilience4j:resilience4j-retry:2.2.0'
 	implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.2.0'
+
+	// Redis
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	// Test Redis connect
+//    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 dependencyManagement {

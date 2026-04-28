@@ -1,4 +1,4 @@
-Cmt by Phelim (15/04/2026)
+Updated by Phelim (20/04/2026)
 src.main.java
           com.phelim.system.love_certificate
                 aop
@@ -6,6 +6,12 @@ src.main.java
                 client
                    SmsClient
                 config
+                    manualratelimit
+                            OtpRateLimitConfig
+                            OtpRateLimitStore
+                    redis
+                            RedisConfig
+                            RedisRateLimitStore
                     resilience
                         CircuitBreakerConfigSetup
                         ResilienceFactory
@@ -34,6 +40,10 @@ src.main.java
                    monitoring
                        CircuitBreakerInfo
                        RetryInfo
+                   ratelimit
+                       RateLimitInfo
+                       RateLimitResult
+                            RateLimitRule
                    request
                       CertificateRevokeRequest
                       GenerateRequest
@@ -56,8 +66,6 @@ src.main.java
                       VerifyOtpResponse
                       VerifyPdfResponse
                    HasRequestId
-                   RateLimitInfo
-                   RateLimitRule
                    TimelineInternal
                    TimelineItem
                 entity
@@ -105,8 +113,11 @@ src.main.java
                       CertificateApplicationService
                       CertificateService
                       CertificateServiceImpl
+                      MonitoringService
                    domain
-                      CertificateAsyncService
+                       ratelimit
+                                OtpRateLimitService
+                       CertificateAsyncService
                       ClientService
                       EmailJobService
                       EmailService
@@ -124,10 +135,6 @@ src.main.java
                       VerifyLogService
                    monitoring
                        MonitoringService
-                   ratelimit
-                            OtpRateLimitConfig
-                            OtpRateLimitService
-                            OtpRateLimitStore
                 tool
                    RsaKeyGenerator
                 util
@@ -150,6 +157,8 @@ src.main.java
           keys
              private_key.pem
              public_key.pem
+          lua
+              rate_limit.lua
           note
               api_test_postman.txt
              api_workflow.txt
