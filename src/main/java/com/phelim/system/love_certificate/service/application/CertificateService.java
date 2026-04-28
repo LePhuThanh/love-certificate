@@ -11,7 +11,7 @@ import java.util.List;
 public interface CertificateService {
     CertificateSession init(InitRequest req);
     byte[] previewCertificate(PreviewCertRequest req);
-    void sendOtp(GenerateRequest req);
+    void sendOtp(GenerateRequest req, HttpServletRequest httpRequest);
     void verifyOtp(VerifyOtpRequest req);
     CertificateStatusResponse getCertificateStatus(String sessionId);
     PublicCertificateResponse getPublicCertificate(String certId);

@@ -1,4 +1,3 @@
-
 5. 🔗 SHAREABLE LINK (SOCIAL CORE)
 🎯 Idea:
 
@@ -72,22 +71,8 @@ heatmap verify time
 
 
 
-
-Resilience4j (retry + circuit breaker)
 Distributed lock
 WebSocket thay polling
-
-
-🔥 9. Retry + Circuit Breaker (chuẩn production)
-Dùng:
-Resilience4j
-💡 áp dụng:
-email service
-file storage
-external API
-
-
-
 
 
 
@@ -146,22 +131,6 @@ HIGH TRUST 🔥
 10. Public trust ranking
 Top 10 love certificates 🔥
 
-🔥 LEVEL 5 – Advanced backend (rất hợp Java Spring)
-14. Retry job (@Scheduled)
-
-👉 nếu generate fail:
-
-@Scheduled(fixedDelay = 60000)
-
-→ retry session FAILED
-
-15. Async queue (Kafka/Rabbit)
-
-👉 thay vì @Async:
-
-verify → publish event → worker generate
-16. Cache (Redis)
-
 👉 cache:
 
 public cert
@@ -182,18 +151,4 @@ Những cái bạn hỏi:
 Feature Nên không
 Login   ✅ (admin + dashboard)
 Những cái bạn NÊN làm tiếp ngay:
-
-👉 2. Scheduled milestone
-👉 3. Retry failed async
-
-4. Một câu chốt rất quan trọng
-
-👉 Bạn không đang build API nữa
-👉 Bạn đang build một sản phẩm có trải nghiệm + trust + cảm xúc
-
-Nếu bạn muốn, tôi có thể:
-
-thiết kế roadmap từ project → production
-hoặc chọn 1 feature (ví dụ @Scheduled milestone) và code full chuẩn cho bạn
-
-Bạn đang ở đúng điểm để nâng project này thành portfolio cực mạnh.
+ 

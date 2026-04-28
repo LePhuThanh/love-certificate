@@ -18,6 +18,7 @@ import com.phelim.system.love_certificate.repository.CertificateSessionRepositor
 import com.phelim.system.love_certificate.repository.CertificateVerifyLogRepository;
 import com.phelim.system.love_certificate.repository.LoveStoryRepository;
 import com.phelim.system.love_certificate.service.domain.*;
+import com.phelim.system.love_certificate.service.ratelimit.OtpRateLimitService;
 import com.phelim.system.love_certificate.util.LoveCertificateUtil;
 import com.phelim.system.love_certificate.util.PhoneNumberNormalizer;
 import jakarta.servlet.http.HttpServletRequest;
@@ -66,6 +67,7 @@ public class CertificateServiceImpl implements CertificateService {
     private final OtpService otpService;
     private final LoveCertificateProperties loveCertificateProperties;
     private final CertificateAsyncService certAsyncService;
+    private final OtpRateLimitService otpRateLimitService;
 
     private final CacheManager cacheManager;
 
@@ -142,8 +144,15 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     @Override
-    public void sendOtp(GenerateRequest req) {
+    public void sendOtp(GenerateRequest req, HttpServletRequest httpRequest) {
         log.info("[CertificateServiceImpl][sendOtp] Start. requestId={}, sessionId={}", req.getRequestId(), req.getSessionId());
+
+        // Rate limit check
+        otpRateLimitService.checkSendOtpAllowed(
+                req.getPhoneNumber(),
+                getClientIp(httpRequest),
+                req.getSessionId()
+        );
 
         CertificateSession session = getSession(req.getSessionId());
         if (!CertSessionStatus.DRAFT.equals(session.getStatus())) {
@@ -171,7 +180,7 @@ public class CertificateServiceImpl implements CertificateService {
 //        String otpSalt = otpService.encodeSalt(salt);
 
         String otp = "123456";
-        
+
         // Send OTP via SMS (Blocking)
         otpService.sendOtp(phoneNumber, otp);
 
@@ -777,5 +786,14 @@ public class CertificateServiceImpl implements CertificateService {
     private CertificateSession getSessionForUpdate(String sessionId) {
         return sessionRepo.findBySessionIdForUpdate(sessionId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SESSION_NOT_FOUND, "sessionId=" + sessionId));
+    }
+
+    private String getClientIp(HttpServletRequest request) {
+        String xfHeader = request.getHeader("X-Forwarded-For");
+        if (xfHeader == null || xfHeader.isBlank()) {
+            return request.getRemoteAddr();
+        }
+        // In case a proxy is used (nginx, gateway)
+        return xfHeader.split(",")[0];
     }
 }
